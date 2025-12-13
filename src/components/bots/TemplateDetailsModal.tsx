@@ -170,7 +170,7 @@ export default function TemplateDetailsModal({ template, onClose, onSelect }: Te
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
         {/* Header */}
         <div className="border-b border-gray-800 p-6 flex items-center justify-between bg-gradient-to-r from-gray-900 to-gray-800">
           <div className="flex items-center gap-4">
@@ -197,7 +197,7 @@ export default function TemplateDetailsModal({ template, onClose, onSelect }: Te
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin scrollbar-thumb-gray-700">
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-4 p-4 bg-black/30 rounded-lg border border-gray-800">
             <div className="text-center">
@@ -333,7 +333,13 @@ export default function TemplateDetailsModal({ template, onClose, onSelect }: Te
             <Button variant="outline" onClick={onClose} className="flex-1">
               Close
             </Button>
-            <Button variant="primary" onClick={onSelect} className="flex-1" size="lg">
+            {/* ✅ FIXED: Use 'default' instead of 'primary', styled with tailwind */}
+            <Button 
+                variant="default" 
+                onClick={onSelect} 
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white" 
+                size="lg"
+            >
               <DollarSign className="w-5 h-5 mr-2" />
               Use This Template
             </Button>
