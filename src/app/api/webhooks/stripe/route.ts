@@ -27,7 +27,8 @@ export async function POST(request: Request) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object
+      // FIX: Cast to any to access specific properties safely if types are missing
+      const session = event.data.object as any
       const userId = session.metadata?.userId
 
       if (userId) {
@@ -42,12 +43,13 @@ export async function POST(request: Request) {
     }
 
     case 'customer.subscription.updated': {
-      const subscription = event.data.object
+      // FIX: Cast to any to fix the "Property 'current_period_end' does not exist" error
+      const subscription = event.data.object as any
       
       await supabaseAdmin
         .from('subscriptions')
         .update({
-          status: subscription.status as any,
+          status: subscription.status,
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         })
         .eq('stripe_subscription_id', subscription.id)
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     case 'customer.subscription.deleted': {
-      const subscription = event.data.object
+      const subscription = event.data.object as any
       
       await supabaseAdmin
         .from('subscriptions')
