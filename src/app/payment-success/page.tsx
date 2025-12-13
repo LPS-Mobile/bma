@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client'; // ⭐ Use your Supabase Client
+import { createClient } from '@/lib/supabase/client'; 
 import { CheckCircle2, Loader2, Lock, Mail, User, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 // ----------------------------------------------------------------------
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get('session_id'); // ⭐ The key to linking payment
+  const sessionId = searchParams.get('session_id'); 
   const router = useRouter(); 
   const supabase = createClient();
 
@@ -22,7 +22,7 @@ function PaymentSuccessContent() {
 
   // --- HELPER: Sync Subscription with Backend ---
   const syncSubscription = async (userId: string) => {
-    if (!sessionId) return; // If no session, just a normal login/signup
+    if (!sessionId) return; 
 
     try {
       const res = await fetch('/api/auth/sync-subscription', {
@@ -205,11 +205,13 @@ function PaymentSuccessContent() {
             </div>
           )}
 
+          {/* FIX: Changed variant="primary" to variant="default" */}
           <Button
             type="submit"
-            variant="primary"
+            variant="default"
             size="lg"
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
+            // Added explicit className to ensure primary color style if "default" is not styled correctly in your theme
             isLoading={loading}
           >
             {isLogin ? 'Log In & Activate' : 'Create Account & Access'}
