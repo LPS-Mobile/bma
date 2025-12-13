@@ -32,6 +32,7 @@ export default function TemplateMarketplace({ onSelectTemplate, onSkip }: Templa
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
+  // ... (Your templates array remains the same) ...
   const templates: Template[] = [
     {
       id: 'liquidity-sweep',
@@ -173,7 +174,8 @@ export default function TemplateMarketplace({ onSelectTemplate, onSkip }: Templa
             className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <Button variant="outline" size="md">
+        {/* ✅ FIXED: Changed size="md" to size="default" (or removed it) */}
+        <Button variant="outline" size="default">
           <Filter className="w-4 h-4 mr-2" />
           Filters
         </Button>
@@ -297,19 +299,24 @@ export default function TemplateMarketplace({ onSelectTemplate, onSkip }: Templa
           onClick={onSkip}
           className="flex-1"
         >
-          <Sparkles className="w-5 h-5 mr-2" />
-          Start from Scratch with AI
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Start from Scratch with AI
+          </div>
         </Button>
         
+        {/* ✅ FIXED: Use 'default' (primary), remove 'rightIcon' and use manual children */}
         <Button
-          variant="primary"
+          variant="default"
           size="lg"
           onClick={handleContinue}
           disabled={!selectedTemplate}
-          className="flex-1"
-          rightIcon={<ArrowRight className="w-5 h-5" />}
+          className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
         >
-          {selectedTemplate ? `Customize ${selectedTemplate.name}` : 'Select a Template'}
+          <div className="flex items-center gap-2 justify-center w-full">
+            <span>{selectedTemplate ? `Customize ${selectedTemplate.name}` : 'Select a Template'}</span>
+            <ArrowRight className="w-5 h-5" />
+          </div>
         </Button>
       </div>
 
