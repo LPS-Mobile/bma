@@ -21,9 +21,7 @@ import BacktestMetrics from '@/components/bots/BacktestMetrics';
 import EquityCurveChart from '@/components/bots/EquityCurveChart';
 import TradeDetailModal from '@/components/bots/TradeDetailModal';
 
-// ... (UI Components: Button, Card, StrategyInput, MarketConfig, ParameterTuning, TradeTable remain the same as previous) ...
-// For brevity, I am keeping the logic components but focusing on the fix in the main component below.
-
+// ... (UI Components) ...
 const Button = ({ variant = 'primary', size = 'md', className = '', children, onClick, isLoading, disabled, ...props }: any) => {
   const base = "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus:outline-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants: any = {
@@ -158,16 +156,17 @@ const TradeTable = ({ trades, onSelect }: any) => (
 // 3. MAIN PAGE (DETAIL VIEW)
 // ==========================================
 
-// ⭐ MAIN FIX: Unwrap `params` Promise for Next.js 15
 export default function BotDetailPage({ params }: { params: Promise<{ botId: string }> }) {
-  // ⭐ Use React.use() to unwrap the Promise
+  // Unwrap the Promise using React.use()
   const { botId } = React.use(params);
   
   const router = useRouter();
   const supabase = createClient();
   
-  // Real Subscription Check
-  const { isFree, isLoading: subLoading } = useSubscription();
+  // FIX: Destructure 'subscription' and 'loading' correctly, then derive 'isFree'
+  const { subscription, loading: subLoading } = useSubscription();
+  const isFree = !subscription || subscription.tier === 'free_trial';
+  
   const isLocked = isFree; 
 
   // State
@@ -185,7 +184,6 @@ export default function BotDetailPage({ params }: { params: Promise<{ botId: str
   // 1. FETCH BOT DATA
   const fetchBotData = useCallback(async () => {
     try {
-       // Use unwrapped `botId` here
        const { data, error } = await supabase.from('bots').select('*').eq('id', botId).single();
        if (error) throw error;
        setBot(data);
@@ -199,7 +197,7 @@ export default function BotDetailPage({ params }: { params: Promise<{ botId: str
     } finally {
        setLoading(false);
     }
-  }, [botId, router, supabase]); // ⭐ Dependency uses unwrapped ID
+  }, [botId, router, supabase]);
 
   useEffect(() => {
     fetchBotData();
