@@ -2,8 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createLicense, getBotLicenses, revokeLicense } from '@/lib/license/generator';
+// FIX: Import the correct function name
+import { injectLicenseValidation } from '@/lib/pinescript/injector'; 
 
-// FIX 1: 'params' must be defined as a Promise
+// 'params' must be defined as a Promise for Next.js 15+
 interface RouteContext {
   params: Promise<{
     botId: string;
@@ -19,13 +21,9 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // FIX 2: Await the params before destructuring
-    const { botId } = await context.params; 
-    
-    // FIX 3: Await the supabase client creation
+    const { botId } = await context.params;
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
       error: authError,
@@ -35,7 +33,6 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify bot ownership
     const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('user_id')
@@ -50,7 +47,6 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get all licenses for this bot
     const licenses = await getBotLicenses(botId);
 
     return NextResponse.json({ licenses }, { status: 200 });
@@ -72,16 +68,12 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // FIX 4: Await the params
     const { botId } = await context.params;
-    
     const body = await request.json();
     const { expiresInDays, maxUsage } = body;
 
-    // FIX 5: Await the supabase client creation
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
       error: authError,
@@ -91,7 +83,6 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify bot ownership
     const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('user_id, name, pinescript_code')
@@ -106,7 +97,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Check user's subscription tier for license limits
+    // Check subscription tier
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('tier')
@@ -115,7 +106,6 @@ export async function POST(
 
     const tier = subscription?.tier || 'free_trial';
 
-    // Check if user can create more licenses based on tier
     const existingLicenses = await getBotLicenses(botId);
     const activeLicenses = existingLicenses.filter((l) => l.isActive);
 
@@ -123,7 +113,7 @@ export async function POST(
       free_trial: 0,
       builder: 5,
       live_trader: 20,
-      automation_pro: -1, // Unlimited
+      automation_pro: -1, 
     };
 
     const maxLicenses = limits[tier] || 0;
@@ -136,7 +126,7 @@ export async function POST(
       );
     }
 
-    // Generate new license
+    // Generate license
     const license = await createLicense({
       botId,
       userId: user.id,
@@ -144,12 +134,12 @@ export async function POST(
       maxUsage,
     });
 
-    // Get the bot's PineScript code to inject license
-    const { injectLicenseIntoPineScript } = await import('@/lib/pinescript/injector');
-    const licensedCode = injectLicenseIntoPineScript(
-      bot.pinescript_code,
-      license.key
-    );
+    // FIX: Use the correct function signature
+    const licensedCode = injectLicenseValidation({
+      code: bot.pinescript_code || "// No code found",
+      licenseKey: license.key,
+      validationEndpoint: `${process.env.NEXT_PUBLIC_APP_URL || 'https://botman.ai'}/verify-license`
+    });
 
     return NextResponse.json(
       {
@@ -185,7 +175,6 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // FIX 6: Await the params
     const { botId } = await context.params;
     
     const { searchParams } = new URL(request.url);
@@ -198,10 +187,8 @@ export async function DELETE(
       );
     }
 
-    // FIX 7: Await the supabase client creation
     const supabase = await createClient();
 
-    // Get current user
     const {
       data: { user },
       error: authError,
@@ -211,7 +198,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify bot ownership
     const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('user_id')
@@ -226,7 +212,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Verify license belongs to this bot
     const { data: license, error: licenseError } = await supabase
       .from('licenses')
       .select('bot_id')
@@ -240,7 +225,6 @@ export async function DELETE(
       );
     }
 
-    // Revoke the license
     await revokeLicense(licenseKey);
 
     return NextResponse.json(
