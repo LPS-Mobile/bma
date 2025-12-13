@@ -4,8 +4,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server'; 
 
-// Initialize Stripe
-// FIX 1: Cast apiVersion to 'any'
+// Initialize Stripe (kept the 'any' fix from previous steps)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20' as any, 
 });
@@ -13,10 +12,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(req: Request) {
   const body = await req.text();
   
-  // Note: headers() is also async in very new Next.js versions, but usually awaiting it 
-  // or calling it directly works depending on the exact patch version. 
-  // If you get a header error later, change this to: (await headers()).get(...)
-  const signature = headers().get('stripe-signature') as string;
+  // FIX: Await headers() because it returns a Promise in Next.js 15
+  const signature = (await headers()).get('stripe-signature') as string;
 
   let event: Stripe.Event;
 
@@ -31,7 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }
 
-  // FIX 2: Await createClient()
+  // FIX: Await createClient() as well
   const supabase = await createClient();
 
   // HANDLE EVENTS
@@ -51,7 +48,7 @@ export async function POST(req: Request) {
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: session.subscription as string,
             status: 'active',
-            plan_id: session.amount_total === 9900 ? 'live_trader' : 'builder', // Simple logic, can be more robust
+            plan_id: session.amount_total === 9900 ? 'live_trader' : 'builder', 
             current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // +30 days
           });
         }
@@ -63,7 +60,6 @@ export async function POST(req: Request) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         
-        // Find user by customer ID if we don't have metadata here
         await supabase
           .from('subscriptions')
           .update({
