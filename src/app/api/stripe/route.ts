@@ -64,7 +64,8 @@ export async function POST(req: Request) {
           .from('subscriptions')
           .update({
             status: subscription.status,
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            // FIX: Cast subscription to any to avoid strict type error on current_period_end
+            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
           })
           .eq('stripe_subscription_id', subscription.id);
         break;
