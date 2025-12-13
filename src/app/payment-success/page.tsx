@@ -55,7 +55,6 @@ function PaymentSuccessContent() {
       });
 
       if (error) throw error;
-      // Note: Redirect happens automatically, sync handled in callback or middleware
     } catch (err: any) {
       console.error(err);
       setError(err.message);
@@ -92,7 +91,6 @@ function PaymentSuccessContent() {
       if (result.error) throw result.error;
 
       if (result.data.user) {
-        // ⭐ Crucial Step: Link the Payment to this new User ID
         await syncSubscription(result.data.user.id);
         router.push('/dashboard');
       }
@@ -205,15 +203,15 @@ function PaymentSuccessContent() {
             </div>
           )}
 
-          {/* FIX: Changed variant="primary" to variant="default" */}
+          {/* FIX: Removed 'isLoading' prop and used 'disabled' + children logic */}
           <Button
             type="submit"
             variant="default"
             size="lg"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
-            // Added explicit className to ensure primary color style if "default" is not styled correctly in your theme
-            isLoading={loading}
+            disabled={loading}
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLogin ? 'Log In & Activate' : 'Create Account & Access'}
             {!loading && <ArrowRight className="ml-2 w-5 h-5" />}
           </Button>
