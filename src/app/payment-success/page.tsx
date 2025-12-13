@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client'; // ⭐ Use your Supabase Client
 import { CheckCircle2, Loader2, Lock, Mail, User, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 
 // ----------------------------------------------------------------------
 // 1. THE CONTENT COMPONENT
