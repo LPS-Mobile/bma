@@ -14,8 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authenticated user
-    const supabase = createClient();
+    // FIX: Await the client creation
+    const supabase = await createClient();
+    
     const {
       data: { user },
       error: authError,
