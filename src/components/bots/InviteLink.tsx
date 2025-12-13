@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-// ✅ Ensure lowercase 'button' matches your file system
-import { Button } from '@/components/ui/button'; 
+import { Button } from '@/components/ui/button'; // Ensure lowercase matches file system
 import { Copy, Check, ExternalLink, Share2, Key, Loader2 } from 'lucide-react';
 
 interface InviteLinkProps {
@@ -20,14 +19,10 @@ export default function InviteLink({ botId, botName, onGenerate }: InviteLinkPro
   const handleGenerateInvite = async () => {
     setIsGenerating(true);
     try {
-      // Mock generation for now (Replace with real API call later)
-      // const response = await fetch(`/api/bots/${botId}/license`, { method: 'POST' });
-      // const data = await response.json();
-      
-      // Simulated response
+      // Simulation of API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const mockKey = `LIC-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       
+      const mockKey = `LIC-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       setLicenseKey(mockKey);
       
       const url = `${window.location.origin}/tradingview/install?license=${mockKey}&bot=${botId}`;
@@ -54,7 +49,7 @@ export default function InviteLink({ botId, botName, onGenerate }: InviteLinkPro
   return (
     <div className="space-y-6">
       {!inviteUrl ? (
-        // Generate Invite
+        // STATE 1: Generate Invite
         <div className="bg-gray-900 border border-gray-700 rounded-lg p-8 text-center animate-in fade-in zoom-in duration-300">
           <div className="mb-6">
             <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
@@ -66,20 +61,23 @@ export default function InviteLink({ botId, botName, onGenerate }: InviteLinkPro
             </p>
           </div>
 
+          {/* ✅ FIXED: Removed 'isLoading' prop. Using standard 'disabled' and manual children composition */}
           <Button
             onClick={handleGenerateInvite}
-            // ✅ FIX 1: Use 'isLoading' instead of 'loading'
-            isLoading={isGenerating} 
+            disabled={isGenerating} 
             size="lg"
             className="w-full sm:w-auto min-w-[200px]"
           >
             {isGenerating ? (
-               'Generating...'
+               <div className="flex items-center gap-2">
+                 <Loader2 className="w-5 h-5 animate-spin" />
+                 <span>Generating...</span>
+               </div>
             ) : (
-               <>
-                 <Share2 className="w-5 h-5 mr-2" />
-                 Generate Invite Link
-               </>
+               <div className="flex items-center gap-2">
+                 <Share2 className="w-5 h-5" />
+                 <span>Generate Invite Link</span>
+               </div>
             )}
           </Button>
 
@@ -90,8 +88,9 @@ export default function InviteLink({ botId, botName, onGenerate }: InviteLinkPro
           </div>
         </div>
       ) : (
-        // Show Invite Link
+        // STATE 2: Show Invite Link
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
           {/* Success Message */}
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
             <div className="flex items-center gap-3">
@@ -141,16 +140,20 @@ export default function InviteLink({ botId, botName, onGenerate }: InviteLinkPro
               size="lg"
               className="bg-blue-600 hover:bg-blue-500"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Install on TradingView
+              <div className="flex items-center gap-2">
+                <ExternalLink className="w-4 h-4" />
+                <span>Install on TradingView</span>
+              </div>
             </Button>
             <Button
               onClick={handleGenerateInvite}
               variant="outline"
               size="lg"
             >
-              <Share2 className="w-4 h-4 mr-2" />
-              Generate New Link
+              <div className="flex items-center gap-2">
+                <Share2 className="w-4 h-4" />
+                <span>Generate New Link</span>
+              </div>
             </Button>
           </div>
 
