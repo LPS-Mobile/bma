@@ -22,7 +22,8 @@ export async function GET(
     // FIX 2: Await the params before destructuring
     const { botId } = await context.params; 
     
-    const supabase = createClient();
+    // FIX 3: Await the supabase client creation
+    const supabase = await createClient();
 
     // Get current user
     const {
@@ -71,13 +72,14 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // FIX 3: Await the params
+    // FIX 4: Await the params
     const { botId } = await context.params;
     
     const body = await request.json();
     const { expiresInDays, maxUsage } = body;
 
-    const supabase = createClient();
+    // FIX 5: Await the supabase client creation
+    const supabase = await createClient();
 
     // Get current user
     const {
@@ -183,7 +185,7 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    // FIX 4: Await the params
+    // FIX 6: Await the params
     const { botId } = await context.params;
     
     const { searchParams } = new URL(request.url);
@@ -196,7 +198,8 @@ export async function DELETE(
       );
     }
 
-    const supabase = createClient();
+    // FIX 7: Await the supabase client creation
+    const supabase = await createClient();
 
     // Get current user
     const {
