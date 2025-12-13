@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Lightbulb } from 'lucide-react';
+import { Sparkles, Lightbulb, Loader2 } from 'lucide-react';
 
 interface StrategyInputProps {
   value: string;
@@ -30,7 +30,7 @@ export default function StrategyInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Example: Buy when RSI drops below 30 and the 50-day moving average is above the 200-day moving average. Sell when RSI goes above 70 or price drops 2% below entry..."
-          className="w-full h-48 bg-gray-900 border border-gray-700 rounded-lg p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
+          className="w-full h-48 bg-gray-900 border border-gray-700 rounded-lg p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm shadow-inner"
           disabled={isGenerating}
         />
         
@@ -51,7 +51,7 @@ export default function StrategyInput({
 
       {/* Tips Panel */}
       {showTips && (
-        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
+        <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4 animate-in slide-in-from-top-2">
           <h3 className="font-semibold text-white flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-yellow-500" />
             Tips for Better Strategies
@@ -79,24 +79,35 @@ export default function StrategyInput({
       )}
 
       {/* Generate Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="text-sm text-gray-400">
           {!isValid && `Need ${minChars - charCount} more characters to generate`}
         </div>
+        
+        {/* ✅ FIXED: Removed 'loading'/'iconLeft' props, put content inside children */}
         <Button
           onClick={onGenerate}
           disabled={!isValid || isGenerating}
-          loading={isGenerating}
-          iconLeft={<Sparkles className="w-4 h-4" />}
           size="lg"
+          className="min-w-[200px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/20"
         >
-          {isGenerating ? 'Generating Strategy...' : 'Generate Bot with AI'}
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating Strategy...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 mr-2 fill-white/20" />
+              Generate Bot with AI
+            </>
+          )}
         </Button>
       </div>
 
       {/* What Happens Next */}
       {isValid && !isGenerating && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 animate-in fade-in">
           <div className="flex gap-3">
             <Sparkles className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm">
