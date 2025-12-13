@@ -52,12 +52,15 @@ export default function ParameterTuning({ parameters, onChange }: ParameterTunin
           <Settings className="w-4 h-4 text-gray-400" />
           <span className="text-sm font-medium text-white">Strategy Parameters</span>
         </div>
+        
+        {/* ✅ FIXED: Removed iconLeft prop, put Icon inside children */}
         <Button
           onClick={handleReset}
           variant="ghost"
           size="sm"
-          iconLeft={<RotateCcw className="w-3 h-3" />}
+          className="text-gray-400 hover:text-white"
         >
+          <RotateCcw className="w-3 h-3 mr-2" />
           Reset
         </Button>
       </div>
@@ -89,6 +92,26 @@ export default function ParameterTuning({ parameters, onChange }: ParameterTunin
           <span>Changes will be applied when you run the next backtest</span>
         </div>
       </div>
+      
+      {/* Inject custom styles for range sliders */}
+      <style jsx global>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          background: #3b82f6;
+          cursor: pointer;
+          border-radius: 50%;
+        }
+        .slider::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          background: #3b82f6;
+          cursor: pointer;
+          border-radius: 50%;
+          border: none;
+        }
+      `}</style>
     </div>
   );
 }
@@ -113,7 +136,7 @@ function ParameterControl({ param, onChange }: { param: any; onChange: (value: a
             )}
           </label>
           {showTooltip && param.description && (
-            <div className="absolute z-10 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 max-w-xs mt-1">
+            <div className="absolute z-10 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 max-w-xs mt-1 shadow-xl">
               {param.description}
             </div>
           )}
@@ -162,7 +185,7 @@ function ParameterControl({ param, onChange }: { param: any; onChange: (value: a
           onChange={(e) => onChange(e.target.value)}
           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {param.options?.map((option) => (
+          {param.options?.map((option: string) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -172,23 +195,3 @@ function ParameterControl({ param, onChange }: { param: any; onChange: (value: a
     </div>
   );
 }
-
-// Add custom slider styles
-const styles = `
-  .slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    cursor: pointer;
-    border-radius: 50%;
-  }
-  .slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    cursor: pointer;
-    border-radius: 50%;
-    border: none;
-  }
-`;
