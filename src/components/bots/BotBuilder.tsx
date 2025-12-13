@@ -211,11 +211,11 @@ export default function BotBuilder({ botId, initialData }: BotBuilderProps) {
 
                 <Button
                   onClick={() => setStep('backtest')}
-                  size="xl"
-                  className="w-full"
-                  rightIcon={<ArrowRight className="w-5 h-5" />}
+                  size="lg" // ✅ FIXED: Changed from "xl" to "lg"
+                  className="w-full text-lg h-14" // Added class for extra height/text size
                 >
                   Continue to Backtest
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </div>
             </div>
