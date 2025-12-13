@@ -3,10 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createLicense, getBotLicenses, revokeLicense } from '@/lib/license/generator';
 
+// FIX 1: 'params' must be defined as a Promise
 interface RouteContext {
-  params: {
+  params: Promise<{
     botId: string;
-  };
+  }>;
 }
 
 /**
@@ -18,7 +19,9 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const { botId } = context.params;
+    // FIX 2: Await the params before destructuring
+    const { botId } = await context.params; 
+    
     const supabase = createClient();
 
     // Get current user
@@ -68,7 +71,9 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const { botId } = context.params;
+    // FIX 3: Await the params
+    const { botId } = await context.params;
+    
     const body = await request.json();
     const { expiresInDays, maxUsage } = body;
 
@@ -178,7 +183,9 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const { botId } = context.params;
+    // FIX 4: Await the params
+    const { botId } = await context.params;
+    
     const { searchParams } = new URL(request.url);
     const licenseKey = searchParams.get('key');
 
