@@ -1,9 +1,11 @@
+// src/app/api/stripe/checkout/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 
+// FIX: Cast apiVersion to 'any' to bypass strict type check for beta SDKs
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2024-06-20' as any,
 });
 
 export async function POST(req: Request) {
