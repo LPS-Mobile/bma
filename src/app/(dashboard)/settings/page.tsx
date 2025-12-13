@@ -80,6 +80,13 @@ const Badge = ({ children, variant = 'default' }: any) => {
 // 3. MAIN SETTINGS PAGE
 // ==========================================
 
+// FIX 1: Define interface to allow 'renews' to be string OR null
+interface SubscriptionState {
+  plan: string;
+  status: string;
+  renews: string | null;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -101,7 +108,8 @@ export default function SettingsPage() {
   });
 
   // Subscription State
-  const [subscription, setSubscription] = useState({
+  // FIX 2: Apply the interface here so TS knows 'renews' can change from null to string later
+  const [subscription, setSubscription] = useState<SubscriptionState>({
     plan: 'free',
     status: 'inactive',
     renews: null
