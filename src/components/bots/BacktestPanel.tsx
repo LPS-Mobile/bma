@@ -5,7 +5,7 @@ import { Play, RefreshCw, AlertCircle, Code, ArrowRight } from 'lucide-react';
 
 import BacktestMetrics from './BacktestMetrics';
 import EquityCurveChart from './EquityCurveChart';
-import { Button } from '@/components/ui/Button'; // Ensure casing matches your file system
+import { Button } from '@/components/ui/button'; // Ensure casing matches your file system
 
 // Check if these paths exist, otherwise you might need to adjust imports
 import { BacktestEngine } from '@/lib/backtesting/engine';
