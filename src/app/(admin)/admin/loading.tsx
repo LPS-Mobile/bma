@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"; // If you don't have this, standard divs work (see below)
+// src/app/(admin)/admin/loading.tsx
 
 export default function AdminLoading() {
   return (
