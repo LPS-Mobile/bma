@@ -5,7 +5,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia', // Keeping your version
+  // ✅ FIX: Updated to the version your installed SDK expects
+  apiVersion: '2025-09-30.clover' as any, 
   typescript: true,
 });
 
@@ -17,8 +18,8 @@ export async function createCheckoutSession(
   userId: string,
   userEmail: string,
   metadata?: Record<string, string>,
-  mode: 'subscription' | 'payment' = 'subscription', // ✅ Added Mode Param
-  successUrl?: string, // ✅ Added URL overrides
+  mode: 'subscription' | 'payment' = 'subscription', 
+  successUrl?: string, 
   cancelUrl?: string
 ): Promise<Stripe.Checkout.Session> {
   
@@ -46,7 +47,6 @@ export async function createCheckoutSession(
   };
 
   // ✅ ONLY add subscription-specific data if in subscription mode
-  // Adding this in 'payment' mode causes a Stripe 400 Error
   if (mode === 'subscription') {
     sessionConfig.subscription_data = {
       metadata: {
