@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-export function Navbar() {
+export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
@@ -27,7 +27,6 @@ export function Navbar() {
             <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
               Pricing
             </Link>
-            {/* UPDATED: Points to #social-proof now */}
             <Link href="#testimonials" className="text-gray-300 hover:text-white transition-colors">
               Testimonials
             </Link>
@@ -36,12 +35,14 @@ export function Navbar() {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <Link href="/login">
-              <Button variant="ghost" size="md">
+              {/* ✅ FIXED: size="md" -> size="default" */}
+              <Button variant="ghost" size="default">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              <Button variant="primary" size="md">
+              {/* ✅ FIXED: variant="primary" -> variant="default", size="md" -> size="default" */}
+              <Button variant="default" size="default" className="bg-blue-600 hover:bg-blue-500 text-white">
                 Start Free Trial
               </Button>
             </Link>
@@ -80,7 +81,6 @@ export function Navbar() {
               >
                 Pricing
               </Link>
-              {/* UPDATED: Points to #social-proof now */}
               <Link 
                 href="#testimonials" 
                 className="text-gray-300 hover:text-white transition-colors"
@@ -88,21 +88,15 @@ export function Navbar() {
               >
                 Testimonials
               </Link>
-              <Link 
-                href="/docs" 
-                className="text-gray-300 hover:text-white transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Docs
-              </Link>
               <div className="pt-4 border-t border-gray-800 flex flex-col gap-3">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" size="md" fullWidth>
+                  {/* ✅ FIXED: size="md" -> size="default", removed fullWidth (use w-full className) */}
+                  <Button variant="outline" size="default" className="w-full">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="primary" size="md" fullWidth>
+                  <Button variant="default" size="default" className="w-full bg-blue-600 hover:bg-blue-500 text-white">
                     Start Free Trial
                   </Button>
                 </Link>
