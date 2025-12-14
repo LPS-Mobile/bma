@@ -98,7 +98,8 @@ export default function TradeChart({ priceData, trades }: TradeChartProps) {
             fill="#10b981"
             shape={(props: any) => {
               const { cx, cy } = props;
-              if (!cx || !cy) return null;
+              // ✅ FIX: Return empty SVG group instead of null
+              if (!cx || !cy) return <g />; 
               return (
                 <circle cx={cx} cy={cy} r={6} fill="#10b981" stroke="#000" strokeWidth={2} />
               );
@@ -112,7 +113,8 @@ export default function TradeChart({ priceData, trades }: TradeChartProps) {
             fill="#ef4444"
             shape={(props: any) => {
               const { cx, cy } = props;
-              if (!cx || !cy) return null;
+              // ✅ FIX: Return empty SVG group instead of null
+              if (!cx || !cy) return <g />;
               return (
                 <circle cx={cx} cy={cy} r={6} fill="#ef4444" stroke="#000" strokeWidth={2} />
               );
@@ -126,7 +128,8 @@ export default function TradeChart({ priceData, trades }: TradeChartProps) {
             fill="#3b82f6"
             shape={(props: any) => {
               const { cx, cy } = props;
-              if (!cx || !cy) return null;
+              // ✅ FIX: Return empty SVG group instead of null
+              if (!cx || !cy) return <g />;
               return (
                 <circle cx={cx} cy={cy} r={6} fill="#3b82f6" stroke="#000" strokeWidth={2} />
               );
