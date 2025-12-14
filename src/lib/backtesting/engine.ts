@@ -1,11 +1,17 @@
 import { Candle, Trade, BacktestResult, StrategyFunction } from '@/types/backtest.types';
 import { calculateMetrics } from './metrics';
 
+// Helper interface to track internal state with bar index
+interface InternalTrade extends Trade {
+  entryIndex: number;
+}
+
 export class BacktestEngine {
   private initialCapital: number;
   private equity: number;
   private trades: Trade[] = [];
-  private currentPosition: Trade | null = null;
+  // Use InternalTrade to track entry index for duration calc
+  private currentPosition: InternalTrade | null = null;
   private equityCurve: { time: number; equity: number }[] = [];
 
   constructor(initialCapital: number = 10000) {
@@ -25,37 +31,38 @@ export class BacktestEngine {
       const candle = candles[i];
       
       // Pass the current position snapshot to the strategy
+      // Cast InternalTrade back to Trade to match StrategyFunction signature
       const action = strategy(candle, i, candles, this.currentPosition);
 
-      // ✅ FIX: Capture class property into a local const for Type Guarding
-      const position = this.currentPosition;
+      // ✅ FIX: Capture class property into a local const to fix TS 'never' error
+      const activeTrade = this.currentPosition;
 
-      // Logic: Execute Orders
-      if (position) {
-        // We have an OPEN position
-        // Check for exit signals
-        if (action === 'SELL' && position.type === 'LONG') {
-          this.closePosition(candle);
+      if (activeTrade) {
+        // --- Manage Open Position ---
+        if (action === 'SELL' && activeTrade.type === 'LONG') {
+          this.closePosition(candle, i);
         }
-        // (Add SHORT exit logic here if needed)
+        // Add SHORT exit logic here if needed:
+        // else if (action === 'BUY' && activeTrade.type === 'SHORT') { ... }
         
       } else {
-        // No position, check for entry signals
+        // --- Check for Entry ---
         if (action === 'BUY') {
-          this.openPosition(candle, 'LONG');
+          this.openPosition(candle, i, 'LONG');
         }
       }
 
       // Track Equity Curve
+      // (Ideally we mark-to-market here using current price vs entry, but for speed we use realized + current cash)
       this.equityCurve.push({ time: candle.time, equity: this.equity });
     }
 
     // Force close any open position at the end of data
     if (this.currentPosition) {
-      this.closePosition(candles[candles.length - 1]);
+      this.closePosition(candles[candles.length - 1], candles.length - 1);
     }
 
-    // Calculate final metrics
+    // Calculate final metrics using our new robust calculator
     const metrics = calculateMetrics(this.trades, this.initialCapital);
 
     return {
@@ -65,9 +72,11 @@ export class BacktestEngine {
     };
   }
 
-  private openPosition(candle: Candle, type: 'LONG' | 'SHORT') {
-    // Simple sizing: Use 100% of equity
+  private openPosition(candle: Candle, index: number, type: 'LONG' | 'SHORT') {
     const price = candle.close;
+    if (price <= 0) return;
+    
+    // Simple sizing: Use 100% of available equity
     const quantity = this.equity / price; 
 
     this.currentPosition = {
@@ -81,10 +90,11 @@ export class BacktestEngine {
       pnl: 0,
       pnlPercent: 0,
       status: 'OPEN',
+      entryIndex: index, // Track index for bar duration
     };
   }
 
-  private closePosition(candle: Candle) {
+  private closePosition(candle: Candle, index: number) {
     if (!this.currentPosition) return;
 
     const price = candle.close;
@@ -94,14 +104,16 @@ export class BacktestEngine {
 
     // Calculate PnL
     if (this.currentPosition.type === 'LONG') {
-      this.currentPosition.pnl = (price - this.currentPosition.entryPrice) * this.currentPosition.quantity;
-      this.currentPosition.pnlPercent = ((price - this.currentPosition.entryPrice) / this.currentPosition.entryPrice) * 100;
+      const diff = price - this.currentPosition.entryPrice;
+      this.currentPosition.pnl = diff * this.currentPosition.quantity;
+      this.currentPosition.pnlPercent = (diff / this.currentPosition.entryPrice) * 100;
     }
 
     // Update Wallet
     this.equity += this.currentPosition.pnl;
     
-    // Save to history
+    // Save to history (remove internal entryIndex before pushing if you want strict typing, 
+    // or just cast it, as extra props don't hurt)
     this.trades.push(this.currentPosition);
     this.currentPosition = null;
   }
