@@ -1,84 +1,11 @@
 'use client';
-// Add this inside the nav items list or near the Sign Out logic
-<Link href="/admin" className="text-xs text-emerald-500 hover:underline mr-4">
-  [Admin]
-</Link>
 
-import React, { useState } from 'react';
-
-// ----------------------------------------------------------------------
-// ⚠️ FOR YOUR LOCAL PROJECT (VS CODE):
-// 1. Uncomment the real imports below.
-// 2. Delete the entire "START MOCKS" to "END MOCKS" section.
-// ----------------------------------------------------------------------
-
-// import Link from 'next/link';
-// import { usePathname, useRouter } from 'next/navigation';
-// import { Button } from '@/components/ui/button'; // Ensure file casing matches
-// import { createClient } from '@/lib/supabase/client';
-
-// ==============================
-// START MOCKS (FOR PREVIEW ONLY)
-// ==============================
-
-// Mock Link for Preview Navigation
-const Link = ({ href, children, className }: any) => (
-  <a 
-    href={href} 
-    className={className}
-    onClick={(e) => {
-      e.preventDefault();
-      console.log(`[Preview] Navigating to: ${href}`);
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', href);
-      }
-    }}
-  >
-    {children}
-  </a>
-);
-
-// Mock Hooks
-const usePathname = () => typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
-const useRouter = () => ({
-  push: (path: string) => {
-    console.log(`[Preview] Router pushing to: ${path}`);
-    if (typeof window !== 'undefined') {
-      window.location.href = path;
-    }
-  }
-});
-const createClient = () => ({ auth: { signOut: async () => console.log('Sign out') } });
-
-// Mock Button (Inline to prevent import errors in preview)
-const Button = ({ variant = 'primary', size = 'md', className = '', children, onClick, ...props }: any) => {
-  const base = "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none disabled:opacity-50 disabled:pointer-events-none";
-  const variants: any = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-gray-800 text-white hover:bg-gray-700",
-    outline: "border border-gray-700 bg-transparent hover:bg-gray-800 text-gray-300 hover:text-white",
-    ghost: "hover:bg-gray-800 text-gray-400 hover:text-white",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-  };
-  const sizes: any = {
-    sm: "h-8 px-3 text-xs",
-    md: "h-10 px-4 py-2 text-sm",
-    icon: "h-10 w-10",
-  };
-  return (
-    <button 
-      onClick={onClick}
-      className={`${base} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-// ==============================
-// END MOCKS
-// ==============================
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+// ✅ Ensure lowercase 'button' matches your file system
+import { Button } from '@/components/ui/button'; 
+import { createClient } from '@/lib/supabase/client';
+import { LogOut, Plus } from 'lucide-react';
 
 export default function DashboardNavbar() {
   const pathname = usePathname();
@@ -93,7 +20,6 @@ export default function DashboardNavbar() {
   };
 
   const handleNewBot = () => {
-    // Routes correctly to the builder
     router.push('/bots/new');
   };
 
@@ -111,10 +37,10 @@ export default function DashboardNavbar() {
           {/* Left - Brand */}
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <span className="text-white font-black text-sm">B</span>
               </div>
-              <span className="text-lg font-bold text-white">Botman AI</span>
+              <span className="text-lg font-bold text-white hidden sm:block">Botman AI</span>
             </Link>
             
             {/* Nav Links */}
@@ -123,7 +49,11 @@ export default function DashboardNavbar() {
                 <Link 
                   key={item.name} 
                   href={item.path}
-                  className={`px-3 py-1.5 rounded-lg transition-colors ${isActive(item.path) ? 'text-white bg-gray-800 font-medium' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${
+                    isActive(item.path) 
+                      ? 'text-white bg-gray-800 font-medium' 
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
                 >
                   {item.name}
                 </Link>
@@ -133,7 +63,8 @@ export default function DashboardNavbar() {
 
           {/* Right - Actions */}
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg text-xs">
+            {/* System Status Indicator */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg text-xs border border-gray-700">
               <div className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -141,21 +72,31 @@ export default function DashboardNavbar() {
               <span className="text-gray-400">System Online</span>
             </div>
 
-            <Button variant="primary" size="sm" onClick={handleNewBot}>
-              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+            {/* ✅ Admin Link Added Here */}
+            <Link href="/admin" className="hidden sm:block text-xs text-emerald-500 hover:text-emerald-400 font-medium mr-2 transition-colors">
+              [Admin]
+            </Link>
+
+            <Button 
+              variant="default" // Changed to default/primary
+              size="sm" 
+              onClick={handleNewBot}
+              className="bg-blue-600 hover:bg-blue-500 text-white border-0"
+            >
+              <Plus className="w-4 h-4 mr-1" />
               New Bot
             </Button>
 
-            {/* User Avatar / Sign Out */}
-            <div 
+            {/* Sign Out Button */}
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleSignOut}
+              className="text-gray-400 hover:text-white hover:bg-gray-800"
               title="Sign Out"
-              className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center text-xs font-bold cursor-pointer hover:scale-105 transition-transform text-white"
             >
-              U
-            </div>
+              <LogOut className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </div>
