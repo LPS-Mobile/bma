@@ -34,8 +34,9 @@ export class BacktestEngine {
       // Cast InternalTrade back to Trade to match StrategyFunction signature
       const action = strategy(candle, i, candles, this.currentPosition);
 
-      // ✅ FIX: Capture class property into a local const to fix TS 'never' error
-      const activeTrade = this.currentPosition;
+      // ✅ FIX: Explicitly cast 'this.currentPosition' to 'InternalTrade | null'
+      // This stops TypeScript from narrowing it to 'never' incorrectly
+      const activeTrade = this.currentPosition as InternalTrade | null;
 
       if (activeTrade) {
         // --- Manage Open Position ---
@@ -53,7 +54,6 @@ export class BacktestEngine {
       }
 
       // Track Equity Curve
-      // (Ideally we mark-to-market here using current price vs entry, but for speed we use realized + current cash)
       this.equityCurve.push({ time: candle.time, equity: this.equity });
     }
 
@@ -112,8 +112,7 @@ export class BacktestEngine {
     // Update Wallet
     this.equity += this.currentPosition.pnl;
     
-    // Save to history (remove internal entryIndex before pushing if you want strict typing, 
-    // or just cast it, as extra props don't hurt)
+    // Save to history
     this.trades.push(this.currentPosition);
     this.currentPosition = null;
   }
