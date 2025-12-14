@@ -1,6 +1,6 @@
 'use client';
 
-import { X, TrendingUp, TrendingDown } from 'lucide-react';
+import { X } from 'lucide-react';
 import { 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   ReferenceDot, Bar, ReferenceArea
@@ -28,7 +28,6 @@ const Badge = ({ children, variant = 'default' }: any) => {
 };
 
 // --- 2. FIXED CANDLESTICK SHAPE ---
-// We map the Bar to [Low, High] so 'y' is High and 'height' is the full range.
 const Candlestick = (props: any) => {
   const { x, y, width, height, payload } = props;
   const { open, close, high, low } = payload;
@@ -36,28 +35,21 @@ const Candlestick = (props: any) => {
   const isGreen = close >= open;
   const color = isGreen ? '#10b981' : '#ef4444';
 
-  // 1. Calculate Pixel Ratio based on full High-Low range (Stable)
   const priceRange = high - low;
   const ratio = priceRange === 0 ? 0 : height / priceRange;
 
-  // 2. Calculate Body Dimensions
   const bodyTopPrice = Math.max(open, close);
   const bodyHeightPrice = Math.abs(open - close);
   
-  // Distance from High (y) to Top of Body
   const bodyOffset = (high - bodyTopPrice) * ratio;
-  const bodyPixelHeight = Math.max(2, bodyHeightPrice * ratio); // Min 2px height
+  const bodyPixelHeight = Math.max(2, bodyHeightPrice * ratio); 
 
-  // 3. Center the candle
   const candleWidth = Math.max(width * 0.5, 4); 
   const xOffset = (width - candleWidth) / 2;
 
   return (
     <g stroke={color} fill={color} strokeWidth="1.5">
-      {/* Wick (Center Line) - Draws full height from High to Low */}
       <line x1={x + width / 2} y1={y} x2={x + width / 2} y2={y + height} />
-      
-      {/* Body Rect - Positioned relative to the wick */}
       <rect 
         x={x + xOffset} 
         y={y + bodyOffset} 
@@ -76,15 +68,13 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
   let entryIdx = -1;
   let exitIdx = -1;
 
-  // Strategy A: Match Timestamps
   if (trade.entryTime > 1000000000) {
-      entryIdx = allCandles.findIndex(c => Math.abs(c.time - trade.entryTime) < 300000); // 5m buffer
+      entryIdx = allCandles.findIndex(c => Math.abs(c.time - trade.entryTime) < 300000); 
       exitIdx = trade.exitTime 
         ? allCandles.findIndex(c => Math.abs(c.time - trade.exitTime) < 300000)
         : allCandles.length - 1;
   }
 
-  // Strategy B: Fallback to center if time fails
   if (entryIdx === -1) {
      entryIdx = Math.floor(allCandles.length / 2);
      exitIdx = entryIdx + 10;
@@ -99,7 +89,6 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
   const chartData = allCandles.slice(startIndex, endIndex).map((c, i) => ({
     ...c,
     index: startIndex + i,
-    // Create a [min, max] range for Recharts to draw the full height wick area
     fullRange: [c.low, c.high], 
     displayTime: c.time > 1000000000 ? c.time : startIndex + i
   }));
@@ -109,7 +98,6 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
   const highs = chartData.map(d => d.high);
   const minPrice = Math.min(...lows);
   const maxPrice = Math.max(...highs);
-  // Add 10% padding so candles don't touch edges
   const pricePadding = (maxPrice - minPrice) * 0.1;
 
   // --- 4. MARKERS ---
@@ -202,14 +190,14 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
                      />
                  )}
 
-                 {/* Candles: We use dataKey="fullRange" which is [low, high] */}
+                 {/* Candles */}
                  <Bar 
                     dataKey="fullRange" 
                     shape={<Candlestick />} 
                     isAnimationActive={false}
                  />
 
-                 {/* Entry Dot */}
+                 {/* Entry Dot - ✅ FIXED: Removed isFront prop */}
                  {entryCandle && (
                      <ReferenceDot 
                         x={entryCandle.displayTime} 
@@ -218,11 +206,10 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
                         fill="#10b981" 
                         stroke="#000" 
                         strokeWidth={2}
-                        isFront={true}
                      />
                  )}
 
-                 {/* Exit Dot */}
+                 {/* Exit Dot - ✅ FIXED: Removed isFront prop */}
                  {exitCandle && (
                      <ReferenceDot 
                         x={exitCandle.displayTime} 
@@ -231,7 +218,6 @@ export default function TradeDetailModal({ trade, allCandles, onClose }: Props) 
                         fill="#ef4444" 
                         stroke="#000" 
                         strokeWidth={2}
-                        isFront={true}
                      />
                  )}
 
