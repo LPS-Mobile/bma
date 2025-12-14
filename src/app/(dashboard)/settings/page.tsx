@@ -442,7 +442,7 @@ export default function SettingsPage() {
                       <div className="text-sm text-gray-400">Live Deployment + Webhooks</div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-mono text-lg">$99<span className="text-sm text-gray-500">/mo</span></span>
+                      <span className="font-mono text-lg">$149<span className="text-sm text-gray-500">/mo</span></span>
                       <Button 
                         size="sm" 
                         variant="primary"
