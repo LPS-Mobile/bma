@@ -3,20 +3,25 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 
-// FIX: Cast apiVersion to 'any' to avoid the type error with the beta SDK
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
 export async function POST(req: Request) {
   try {
+    // 1. Move Stripe initialization INSIDE the handler (or use a singleton pattern)
+    // This prevents build crashes if the key is missing in CI/CD
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is missing');
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20' as any,
+    });
+
     const { userId, sessionId } = await req.json();
 
     if (!userId || !sessionId) {
       return NextResponse.json({ error: 'Missing Data' }, { status: 400 });
     }
 
-    // 1. Retrieve the Session from Stripe to get the Customer ID
+    // 2. Retrieve the Session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const customerId = session.customer as string;
 
@@ -24,19 +29,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No Customer ID found in Session' }, { status: 404 });
     }
 
-    // 2. Update Supabase
-    // We update the User's metadata or a dedicated 'subscriptions' table
+    // 3. Update Supabase
     const supabase = await createClient();
 
-    // Option A: Update a 'subscriptions' table (Recommended if you have one)
     const { error: subError } = await supabase
       .from('subscriptions')
-      .update({ user_id: userId }) // Assign the anonymous sub to this user
-      .eq('stripe_customer_id', customerId); // Find by the customer ID Stripe created
+      .update({ user_id: userId })
+      .eq('stripe_customer_id', customerId);
 
-    // Option B: Fallback - Update user metadata
-    // typically the webhook handles the table creation, but we might need to link it here
-    
+    if (subError) {
+      console.error('Supabase Update Error:', subError);
+      // Depending on logic, you might want to return an error or just log it
+    }
+
     console.log(`✅ [SYNC] Linked Customer ${customerId} to User ${userId}`);
 
     return NextResponse.json({ success: true });
