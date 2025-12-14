@@ -48,7 +48,8 @@ export async function validateLicense(
     };
   }
 
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   // Fetch license from database
   const { data: license, error } = await supabase
@@ -159,7 +160,8 @@ export async function validateLicenseSecure(
     return result;
   }
 
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   // Check rate limiting (max 100 validations per hour per license)
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -203,7 +205,8 @@ export async function validateLicenseSecure(
  * Get license details (for display purposes)
  */
 export async function getLicenseDetails(licenseKey: string) {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data: license, error } = await supabase
     .from('licenses')
@@ -266,7 +269,8 @@ export async function userOwnsLicense(
   userId: string,
   botId: string
 ): Promise<boolean> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('licenses')
@@ -283,7 +287,8 @@ export async function userOwnsLicense(
  * Get active licenses count for a bot
  */
 export async function getActiveLicenseCount(botId: string): Promise<number> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { count, error } = await supabase
     .from('licenses')
