@@ -23,15 +23,22 @@ export class BacktestEngine {
     // Main Simulation Loop
     for (let i = 0; i < candles.length; i++) {
       const candle = candles[i];
+      
+      // Pass the current position snapshot to the strategy
       const action = strategy(candle, i, candles, this.currentPosition);
 
+      // ✅ FIX: Capture class property into a local const for Type Guarding
+      const position = this.currentPosition;
+
       // Logic: Execute Orders
-      if (this.currentPosition) {
-        // If we have a position, check for exit signals
-        if (action === 'SELL' && this.currentPosition.type === 'LONG') {
+      if (position) {
+        // We have an OPEN position
+        // Check for exit signals
+        if (action === 'SELL' && position.type === 'LONG') {
           this.closePosition(candle);
         }
-        // (Add logic here if you want to support Shorting, currently Long-only for simplicity)
+        // (Add SHORT exit logic here if needed)
+        
       } else {
         // No position, check for entry signals
         if (action === 'BUY') {
@@ -39,10 +46,7 @@ export class BacktestEngine {
         }
       }
 
-      // Track Equity Curve (Mark to Market)
-      // Note: Real equity curve updates on every candle close, even if trade isn't closed
-      // For simplicity, we just push current equity + unrealized PnL? 
-      // Let's just push realized equity for this MVP to keep it fast.
+      // Track Equity Curve
       this.equityCurve.push({ time: candle.time, equity: this.equity });
     }
 
@@ -62,8 +66,7 @@ export class BacktestEngine {
   }
 
   private openPosition(candle: Candle, type: 'LONG' | 'SHORT') {
-    // Simple sizing: Use 100% of equity (Compounding) or Fixed?
-    // Let's use 100% of current equity to buy
+    // Simple sizing: Use 100% of equity
     const price = candle.close;
     const quantity = this.equity / price; 
 
