@@ -1,20 +1,14 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button' // Check casing matches your file system
+import { Button } from '@/components/ui/button' 
 
 export function Hero() {
   return (
-    // ADDED pt-24 here to push content down below the navbar
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 pt-24">
       {/* Animated Background */}
       <div className="absolute inset-0 z-0">
-        {/* Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-        
-        {/* Gradient Orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl animate-pulse delay-700" />
-        
-        {/* Scan Line Effect */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent animate-scan" />
       </div>
 
@@ -48,14 +42,12 @@ export function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-          {/* ✅ UPDATED: Points to signup with specific context */}
           <Link href="/signup?plan=free_trial">
             <Button 
-              size="xl" 
-              variant="primary"
-              className="group relative overflow-hidden"
+              size="lg" // ✅ FIXED: Changed 'xl' to 'lg'
+              variant="default" // Changed to 'default' if 'primary' doesn't exist, usually maps to blue
+              className="group relative overflow-hidden h-14 px-8 text-lg" // Added manual sizing
             >
-              {/* ✅ UPDATED: New Text */}
               <span className="relative z-10">Start 7 Day Free Trial</span>
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </Button>
@@ -88,7 +80,6 @@ export function Hero() {
         <div className="mt-16 relative">
           <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-emerald-500/20 rounded-3xl blur-3xl" />
           <div className="relative bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
-            {/* Mock Terminal/Dashboard */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-6">
                 <div className="flex gap-2">
