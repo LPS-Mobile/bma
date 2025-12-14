@@ -26,12 +26,12 @@ export function PricingTable() {
     {
       name: 'Free Trial',
       id: 'free_trial',
-      price: 0, // ✅ Logic trigger
+      price: 0,
       period: '7 days',
       description: 'Perfect for testing the waters',
       highlight: false,
       cta: 'Start Free Trial',
-      ctaVariant: 'outline' as const,
+      ctaVariant: 'outline' as const, // ✅ Valid
       stripeId: null,
       features: [
         { text: '1 bot project', included: true },
@@ -50,8 +50,7 @@ export function PricingTable() {
       description: 'For serious strategy developers',
       highlight: false,
       cta: 'Get Started',
-      ctaVariant: 'primary' as const,
-      // Use Env Var or fallback string
+      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
       stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUILDER || 'price_1SJd1hDATCpMStKajg0ByEXv',
       features: [
         { text: 'Unlimited bots', included: true },
@@ -72,7 +71,7 @@ export function PricingTable() {
       highlight: false,
       badge: 'Most Popular',
       cta: 'Start Trading Live',
-      ctaVariant: 'primary' as const,
+      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
       stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE || 'price_1SJd29DATCpMStKa9wc05i4L',
       features: [
         { text: 'Everything in Builder', included: true },
@@ -94,7 +93,7 @@ export function PricingTable() {
       highlight: true,
       badge: 'Prop Firm Ready',
       cta: 'Go Pro',
-      ctaVariant: 'primary' as const,
+      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
       comingSoon: false,
       stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_1SJd96DATCpMStKavJ4b8avr',
       features: [
@@ -113,13 +112,11 @@ export function PricingTable() {
   const handleCheckout = async (plan: typeof plans[0]) => {
     setLoadingId(plan.id)
 
-    // ✅ CASE 1: FREE TRIAL -> Redirect to Signup
     if (plan.price === 0) {
-      router.push('/signup?plan=free_trial') // Added query param for tracking
+      router.push('/signup?plan=free_trial')
       return
     }
 
-    // ✅ CASE 2: PAID PLANS -> Stripe Checkout
     if (!plan.stripeId) {
       console.error(`Missing Stripe Price ID for plan: ${plan.name}`)
       alert(`Configuration Error: Price ID missing for ${plan.name}.`)
@@ -156,7 +153,6 @@ export function PricingTable() {
 
   return (
     <section className="py-24 px-4 relative overflow-hidden" id="pricing">
-      {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-gray-900" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-3xl" />
       
