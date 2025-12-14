@@ -39,9 +39,13 @@ const DialogTrigger = ({
 
   // If asChild is true, we clone the child (likely a Button) and hijack its onClick
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<any>, {
+    // ✅ FIX: Cast child explicitly so TS knows it has props
+    const child = children as React.ReactElement<any>
+    
+    return React.cloneElement(child, {
       onClick: (e: React.MouseEvent) => {
-        children.props.onClick?.(e)
+        // Now safely access props
+        child.props.onClick?.(e)
         onOpenChange?.(true)
       }
     })
