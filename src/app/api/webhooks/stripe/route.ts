@@ -4,14 +4,19 @@ import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// REMOVED: Global initialization causing build crash
+// const supabaseAdmin = createClient(...)
 
 export async function POST(request: Request) {
   const body = await request.text()
   const signature = (await headers()).get('stripe-signature')!
+
+  // 1. Initialize Supabase Admin INSIDE the handler
+  // This ensures it only runs at runtime, preventing build failures.
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   let event
 
@@ -27,7 +32,6 @@ export async function POST(request: Request) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      // FIX: Cast to any to access specific properties safely if types are missing
       const session = event.data.object as any
       const userId = session.metadata?.userId
 
@@ -43,7 +47,6 @@ export async function POST(request: Request) {
     }
 
     case 'customer.subscription.updated': {
-      // FIX: Cast to any to fix the "Property 'current_period_end' does not exist" error
       const subscription = event.data.object as any
       
       await supabaseAdmin
