@@ -1,4 +1,3 @@
-// src/lib/license/generator.ts
 import { createHash, randomBytes } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 
@@ -55,7 +54,8 @@ export function hashLicenseKey(licenseKey: string): string {
 export async function createLicense(
   options: GenerateLicenseOptions
 ): Promise<License> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
   const { botId, userId, expiresInDays, maxUsage } = options;
 
   // Generate unique license key
@@ -109,7 +109,8 @@ export async function createLicense(
  * Revoke a license (deactivate it)
  */
 export async function revokeLicense(licenseKey: string): Promise<boolean> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('licenses')
@@ -127,7 +128,8 @@ export async function revokeLicense(licenseKey: string): Promise<boolean> {
  * Get all licenses for a specific bot
  */
 export async function getBotLicenses(botId: string): Promise<License[]> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('licenses')
@@ -156,7 +158,8 @@ export async function getBotLicenses(botId: string): Promise<License[]> {
  * Get all licenses for a user
  */
 export async function getUserLicenses(userId: string): Promise<License[]> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('licenses')
@@ -187,7 +190,8 @@ export async function getUserLicenses(userId: string): Promise<License[]> {
 export async function incrementLicenseUsage(
   licenseKey: string
 ): Promise<boolean> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { error } = await supabase.rpc('increment_license_usage', {
     key: licenseKey,
@@ -204,7 +208,8 @@ export async function incrementLicenseUsage(
  * Check if a license has reached its usage limit
  */
 export async function isLicenseAtLimit(licenseKey: string): Promise<boolean> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('licenses')
@@ -244,7 +249,8 @@ export async function createBulkLicenses(
  * Clean up expired licenses (run periodically)
  */
 export async function cleanupExpiredLicenses(): Promise<number> {
-  const supabase = createClient();
+  // ✅ FIX: Added await
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('licenses')
