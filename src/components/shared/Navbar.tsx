@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-export default function Navbar() {
+// ✅ FIXED: Changed 'export default function' to 'export function'
+export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
@@ -35,13 +36,11 @@ export default function Navbar() {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <Link href="/login">
-              {/* ✅ FIXED: size="md" -> size="default" */}
               <Button variant="ghost" size="default">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup">
-              {/* ✅ FIXED: variant="primary" -> variant="default", size="md" -> size="default" */}
               <Button variant="default" size="default" className="bg-blue-600 hover:bg-blue-500 text-white">
                 Start Free Trial
               </Button>
@@ -90,7 +89,6 @@ export default function Navbar() {
               </Link>
               <div className="pt-4 border-t border-gray-800 flex flex-col gap-3">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  {/* ✅ FIXED: size="md" -> size="default", removed fullWidth (use w-full className) */}
                   <Button variant="outline" size="default" className="w-full">
                     Sign In
                   </Button>
