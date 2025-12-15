@@ -264,10 +264,27 @@ const TemplateMarketplace = ({ onSelectTemplate }: any) => (
 );
 
 // --- REQUEST DEPLOYMENT COMPONENT (FIXED) ---
+// --- [FIXED] DEPLOYMENT REQUEST COMPONENT ---
 const RequestDeployment = ({ botId, botName, platform }: any) => {
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
   const supabase = createClient();
+
+  // Check status on load
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!botId) return;
+      const { data } = await supabase
+        .from('deployments')
+        .select('*')
+        .eq('bot_id', botId)
+        .eq('platform', platform)
+        .maybeSingle(); // FIX: Use maybeSingle() to avoid 406 errors if empty
+      
+      if (data) setRequested(true);
+    };
+    checkStatus();
+  }, [botId, platform, supabase]);
 
   const handleRequest = async () => {
     if (!botId) return toast.error("Please save your bot first.");
@@ -277,25 +294,11 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Check existing
-      const { data: existing } = await supabase
-        .from('deployments')
-        .select('*')
-        .eq('bot_id', botId)
-        .eq('platform', platform)
-        .single();
-
-      if (existing) {
-        toast.info(`Request for ${platform} already pending.`);
-        setRequested(true);
-        return;
-      }
-
-      // Create Request
+      // 1. Insert Request
+      // FIX: Removed 'bot_name' because the column does not exist in your DB schema.
       const { error } = await supabase.from('deployments').insert({
         user_id: user.id,
         bot_id: botId,
-        bot_name: botName,
         platform: platform,
         status: 'pending',
         requested_at: new Date().toISOString()
@@ -307,7 +310,7 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
       setRequested(true);
     } catch (e: any) {
       console.error(e);
-      toast.error("Request Failed", { description: e.message });
+      toast.error("Request Failed", { description: e.message || e.details });
     } finally {
       setLoading(false);
     }
