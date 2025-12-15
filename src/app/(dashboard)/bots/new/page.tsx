@@ -340,7 +340,7 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
   );
 };
 
-// --- DEPLOYMENT SCREEN (FIXED) ---
+// --- [FIXED] DEPLOYMENT SCREEN ---
 const DeploymentScreen = ({ botId, botName, plan, onSave, isSaving }: any) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const router = useRouter();
@@ -373,20 +373,33 @@ const DeploymentScreen = ({ botId, botName, plan, onSave, isSaving }: any) => {
   const canDeployTv = ['live_trader', 'automation_pro', 'pro'].includes(normalizedPlan);
   const canDeployPro = ['automation_pro', 'pro'].includes(normalizedPlan);
 
+  // --- FIX: MATCHING YOUR EXISTING API ROUTE ---
   const handleAudit = async () => {
     setIsCheckingOut(true);
     try {
+       // Your backend expects: { botId, planType }
+       // It looks up the price using process.env.STRIPE_PRICE_ID_EXPERT_REVIEW
        const res = await fetch('/api/stripe/checkout', { 
          method: 'POST', 
          headers: {'Content-Type': 'application/json'}, 
-         body: JSON.stringify({ botId, planType: 'expert_review' }) 
+         body: JSON.stringify({ 
+           botId, 
+           planType: 'expert_review',
+           mode: 'payment' // Explicitly tell backend this is a one-time payment
+         }) 
        });
        
        const data = await res.json();
-       if (!res.ok) throw new Error(data.error || 'Checkout failed');
-       if(data.url) window.location.href = data.url;
        
+       if (!res.ok) {
+           throw new Error(data.error || 'Checkout failed');
+       }
+
+       if(data.url) window.location.href = data.url;
+       else throw new Error('No URL returned from checkout API');
+
     } catch(e: any) { 
+      console.error(e);
       toast.error('Checkout failed', { description: e.message }); 
       setIsCheckingOut(false); 
     }
@@ -481,7 +494,6 @@ const DeploymentScreen = ({ botId, botName, plan, onSave, isSaving }: any) => {
     </div>
   );
 };
-
 // ==========================================
 // MAIN COMPONENT
 // ==========================================
