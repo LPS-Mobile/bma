@@ -14,11 +14,11 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 
-// --- COMPONENTS ---
-import RequestDeployment from '@/components/bots/RequestDeployment';
+// --- IMPORTS ---
+// Ensure these components exist in your project or comment them out if testing
 import BacktestMetrics from '@/components/bots/BacktestMetrics';
 
-// Types
+// --- TYPES ---
 interface TradeData {
   entry_time?: string;
   date?: string;
@@ -39,6 +39,8 @@ interface BacktestResult {
   dates?: string[];
   runId?: string;
 }
+
+// --- UI COMPONENTS ---
 
 const Button = ({ variant = 'primary', size = 'md', className = '', children, onClick, isLoading, disabled, ...props }: any) => {
   const base = "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus:outline-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -97,6 +99,8 @@ const UpgradeWall = ({ router }: any) => (
     </div>
   </div>
 );
+
+// --- STRATEGY INPUT COMPONENTS ---
 
 const StrategyInput = ({ value, onChange }: any) => (
   <div className="space-y-3">
@@ -250,11 +254,105 @@ const TemplateMarketplace = ({ onSelectTemplate }: any) => (
   </div>
 );
 
-// --- DEPLOYMENT SCREEN ---
-const DeploymentScreen = ({ botId, botName, plan }: any) => {
+// --- [FIXED] DEPLOYMENT REQUEST COMPONENT ---
+const RequestDeployment = ({ botId, botName, platform }: any) => {
+  const [loading, setLoading] = useState(false);
+  const [requested, setRequested] = useState(false);
+  const supabase = createClient();
+
+  const handleRequest = async () => {
+    // Safety check again
+    if (!botId) return toast.error("Please save your bot first.");
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Check for existing
+      const { data: existing } = await supabase
+        .from('deployments')
+        .select('*')
+        .eq('bot_id', botId)
+        .eq('platform', platform)
+        .single();
+
+      if (existing) {
+        toast.info(`Request for ${platform} already pending.`);
+        setRequested(true);
+        return;
+      }
+
+      // Create Request
+      const { error } = await supabase.from('deployments').insert({
+        user_id: user.id,
+        bot_id: botId,
+        bot_name: botName,
+        platform: platform,
+        status: 'pending',
+        requested_at: new Date().toISOString()
+      });
+
+      if (error) throw error;
+
+      toast.success(`${platform} request submitted!`);
+      setRequested(true);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Request Failed", { description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (requested) {
+    return (
+      <button disabled className="w-full h-10 bg-green-900/20 border border-green-500/30 text-green-500 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed">
+        <BadgeCheck className="w-4 h-4" /> Request Sent
+      </button>
+    );
+  }
+
+  return (
+    <Button 
+      onClick={handleRequest} 
+      isLoading={loading} 
+      className="w-full h-10 text-sm bg-blue-600 hover:bg-blue-500"
+    >
+      Request {platform} Setup
+    </Button>
+  );
+};
+
+// --- [FIXED] DEPLOYMENT SCREEN ---
+const DeploymentScreen = ({ botId, botName, plan, onSave, isSaving }: any) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const router = useRouter();
   
+  // 1. SAFETY CHECK: If bot is unsaved, BLOCK the view
+  if (!botId) {
+    return (
+      <div className="max-w-2xl mx-auto mt-12 text-center animate-fade-in">
+        <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-10 flex flex-col items-center shadow-2xl">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/20">
+            <AlertCircle className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Save Strategy First</h2>
+          <p className="text-gray-400 mb-8 max-w-md">
+            You must save your strategy to the database before you can access deployment options or request expert reviews.
+          </p>
+          <Button 
+            onClick={onSave} 
+            isLoading={isSaving}
+            className="w-full max-w-xs bg-white text-black hover:bg-gray-200 font-bold"
+          >
+            <Save className="w-4 h-4 mr-2" /> Save Strategy Now
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const normalizedPlan = plan ? plan.toLowerCase().trim().replace(/ /g, '_') : 'free';
   const canDeployTv = ['live_trader', 'automation_pro', 'pro'].includes(normalizedPlan);
   const canDeployPro = ['automation_pro', 'pro'].includes(normalizedPlan);
@@ -265,21 +363,13 @@ const DeploymentScreen = ({ botId, botName, plan }: any) => {
        const res = await fetch('/api/stripe/checkout', { 
          method: 'POST', 
          headers: {'Content-Type': 'application/json'}, 
-         body: JSON.stringify({ 
-           botId, 
-           planType: 'expert_review' 
-         }) 
+         body: JSON.stringify({ botId, planType: 'expert_review' }) 
        });
        
        const data = await res.json();
-       
-       if (!res.ok) {
-           throw new Error(data.error || 'Checkout failed');
-       }
-
+       if (!res.ok) throw new Error(data.error || 'Checkout failed');
        if(data.url) window.location.href = data.url;
-       else throw new Error('No URL returned');
-
+       
     } catch(e: any) { 
       toast.error('Checkout failed', { description: e.message }); 
       setIsCheckingOut(false); 
@@ -287,10 +377,10 @@ const DeploymentScreen = ({ botId, botName, plan }: any) => {
   };
 
   return (
-    <div className="animate-fade-in max-w-5xl mx-auto">
+    <div className="animate-fade-in max-w-5xl mx-auto pb-20">
         <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-white mb-3">Go Live</h2>
-            <p className="text-gray-400">Choose where you want to run this strategy.</p>
+            <p className="text-gray-400">Deploy your strategy to a live trading environment.</p>
             
             <div className="mt-4 inline-flex items-center gap-2 bg-gray-900/80 border border-gray-700 rounded-full px-3 py-1 text-xs text-gray-400">
                 <BadgeCheck className="w-3 h-3 text-blue-500" />
@@ -299,65 +389,72 @@ const DeploymentScreen = ({ botId, botName, plan }: any) => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-blue-500/50 transition-colors">
-              <div className="w-14 h-14 bg-blue-900/20 rounded-full flex items-center justify-center text-blue-400 mb-4"><Globe className="w-7 h-7" /></div>
+            {/* TradingView Card */}
+            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-blue-500/50 transition-colors group">
+              <div className="w-14 h-14 bg-blue-900/10 rounded-full flex items-center justify-center text-blue-400 mb-4 group-hover:scale-110 transition-transform"><Globe className="w-7 h-7" /></div>
               <h3 className="text-xl font-bold mb-2">TradingView</h3>
-              <p className="text-sm text-gray-400 mb-6">Alerts & Signal Webhooks</p>
-              {canDeployTv ? (
-                <RequestDeployment botId={botId} botName={botName} platform="TradingView" />
-              ) : (
-                <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Upgrade to Unlock</Button>
-              )}
+              <p className="text-sm text-gray-400 mb-6 flex-1">Webhooks & Alert automation</p>
+              <div className="w-full mt-auto">
+                {canDeployTv ? (
+                    <RequestDeployment botId={botId} botName={botName} platform="TradingView" />
+                ) : (
+                    <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Upgrade to Unlock</Button>
+                )}
+              </div>
             </div>
 
-            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-amber-500/50 transition-colors">
-              <div className="w-14 h-14 bg-amber-900/20 rounded-full flex items-center justify-center text-amber-500 mb-4"><Monitor className="w-7 h-7" /></div>
+            {/* MT5 Card */}
+            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-amber-500/50 transition-colors group">
+              <div className="w-14 h-14 bg-amber-900/10 rounded-full flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 transition-transform"><Monitor className="w-7 h-7" /></div>
               <h3 className="text-xl font-bold mb-2">MetaTrader 5</h3>
-              <p className="text-sm text-gray-400 mb-6">Export .MQ5 Expert Advisor</p>
-              {canDeployPro ? (
-                 <RequestDeployment botId={botId} botName={botName} platform="MetaTrader 5" />
-              ) : (
-                 <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Requires Pro Plan</Button>
-              )}
+              <p className="text-sm text-gray-400 mb-6 flex-1">Expert Advisor (.MQ5)</p>
+              <div className="w-full mt-auto">
+                {canDeployPro ? (
+                    <RequestDeployment botId={botId} botName={botName} platform="MetaTrader 5" />
+                ) : (
+                    <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Requires Pro Plan</Button>
+                )}
+              </div>
             </div>
 
-            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-green-500/50 transition-colors">
-              <div className="w-14 h-14 bg-green-900/20 rounded-full flex items-center justify-center text-green-500 mb-4"><Cpu className="w-7 h-7" /></div>
+            {/* NinjaTrader Card */}
+            <div className="bg-[#0F1115] border border-gray-800 rounded-2xl p-6 flex flex-col items-center text-center hover:border-green-500/50 transition-colors group">
+              <div className="w-14 h-14 bg-green-900/10 rounded-full flex items-center justify-center text-green-500 mb-4 group-hover:scale-110 transition-transform"><Cpu className="w-7 h-7" /></div>
               <h3 className="text-xl font-bold mb-2">NinjaTrader 8</h3>
-              <p className="text-sm text-gray-400 mb-6">Export .CS Strategy File</p>
-              {canDeployPro ? (
-                 <RequestDeployment botId={botId} botName={botName} platform="NinjaTrader 8" />
-              ) : (
-                 <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Requires Pro Plan</Button>
-              )}
+              <p className="text-sm text-gray-400 mb-6 flex-1">C# Strategy (.CS)</p>
+              <div className="w-full mt-auto">
+                {canDeployPro ? (
+                    <RequestDeployment botId={botId} botName={botName} platform="NinjaTrader 8" />
+                ) : (
+                    <Button onClick={() => router.push('/pricing')} variant="locked" className="w-full text-xs">Requires Pro Plan</Button>
+                )}
+              </div>
             </div>
         </div>
 
+        {/* Expert Review Section */}
         <div className="mt-8 bg-gradient-to-r from-purple-900/10 to-blue-900/10 border border-purple-500/20 rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative flex items-start gap-4">
-              <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/30">
-                <Eye className="w-6 h-6 text-purple-400" />
+            <div className="relative flex flex-col md:flex-row items-center md:items-start gap-6">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/30">
+                <Crown className="w-8 h-8 text-purple-400" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 text-center md:text-left">
                 <h4 className="text-lg font-bold text-white mb-2">Professional Strategy Review</h4>
                 <p className="text-sm text-gray-400 mb-4 max-w-2xl">
-                  Get your strategy reviewed by a qualified quant. Includes parameter optimization suggestions, 
-                  drawdown risk assessment, and specific deployment recommendations.
+                  Get your strategy reviewed by a qualified quant. Includes parameter optimization suggestions and code validation.
                 </p>
                 <button 
                   onClick={handleAudit}
                   disabled={isCheckingOut}
-                  className="inline-flex items-center justify-center h-10 px-6 text-sm font-semibold bg-white text-black rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center h-12 px-8 text-sm font-bold bg-white text-black rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-900/20"
                 >
                   {isCheckingOut ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing Payment...
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <Crown className="w-4 h-4 mr-2 text-purple-600" />
                       Request Expert Review - $49
                     </>
                   )}
@@ -405,8 +502,7 @@ export default function BotBuilderPage() {
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
 
-  // ✅ CRITICAL FIX: Clear generated strategy when user types new text
-  // This forces a re-generation on the next 'Run' click
+  // Clear generated strategy when user types new text
   useEffect(() => {
     if (generatedStrategy) {
       setGeneratedStrategy(null);
@@ -504,7 +600,6 @@ export default function BotBuilderPage() {
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
-      console.log("Connecting to Backtest Engine at:", API_URL);
 
       let backendUrl;
       let requestBody;
@@ -514,7 +609,6 @@ export default function BotBuilderPage() {
       // Only run if we have text input and haven't generated yet
       if (strategyInput.trim().length > 5 && !strategyToUse) {
         try {
-            // Using correct route: api/generate/strategy
             const aiResponse = await fetch('/api/parse/strategy', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -541,7 +635,7 @@ export default function BotBuilderPage() {
             console.error("AI Generation Failed:", aiErr);
             toast.error("AI Generation Failed", { description: aiErr.message });
             setLoading(false);
-            return; // Stop execution if AI fails
+            return;
         }
       }
 
@@ -831,7 +925,15 @@ export default function BotBuilderPage() {
           </div>
         )}
         
-        {activeTab === 'deploy' && <DeploymentScreen botId={savedBotId} botName={botName} plan={realPlan} />}
+        {activeTab === 'deploy' && (
+            <DeploymentScreen 
+                botId={savedBotId} 
+                botName={botName} 
+                plan={realPlan}
+                onSave={handleSaveBot}
+                isSaving={saving}
+            />
+        )}
       </main>
     </div>
   );
