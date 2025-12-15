@@ -579,15 +579,15 @@ export default function BotBuilderPage() {
       if (!user) throw new Error('Must be logged in');
 
       // 2. Prepare Data
-      // FIX: Removed JSON.stringify on 'config' to prevent 400 Bad Request if DB is jsonb
+      // FIX: Removed last_backtest_result as it does not exist in the schema
       const botData = {
         user_id: user.id,
         name: botName,
         description: strategyInput || 'No description',
         strategy_prompt: config, 
         symbol: config.symbol,
-        status: 'active',
-        last_backtest_result: result.metrics
+        status: 'active'
+        // last_backtest_result: result.metrics // <-- REMOVED THIS LINE
       };
 
       if (savedBotId) {
@@ -780,7 +780,7 @@ export default function BotBuilderPage() {
             onClick={handleSaveBot} 
             isLoading={saving} 
             disabled={!result} 
-            variant="primary" // FIX: Standard blue style
+            variant="primary"
             size="sm" 
             className="shadow-lg shadow-blue-900/20"
           >
