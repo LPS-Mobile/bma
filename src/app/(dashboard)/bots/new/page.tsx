@@ -18,22 +18,7 @@ import Image from 'next/image';
 import RequestDeployment from '@/components/bots/RequestDeployment';
 import BacktestMetrics from '@/components/bots/BacktestMetrics';
 
-// Types for better safety
-// FIX: We keep this for reference, but we will use 'any' in the result to prevent build errors
-interface MetricData {
-  totalTrades: number;
-  winRate: number;
-  netProfit: number;
-  totalReturn: number;
-  maxDrawdown: number;
-  sharpeRatio: number;
-  sortinoRatio: number;
-  profitFactor: number;
-  sqn: number;
-  wins: number;
-  losses: number;
-}
-
+// Types
 interface TradeData {
   entry_time?: string;
   date?: string;
@@ -48,7 +33,7 @@ interface TradeData {
 }
 
 interface BacktestResult {
-  metrics: any; // FIX: Changed from MetricData to 'any' to avoid strict type mismatch with component
+  metrics: any; 
   trades: TradeData[];
   chartImage?: string;
   dates?: string[];
@@ -420,6 +405,14 @@ export default function BotBuilderPage() {
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
 
+  // ✅ CRITICAL FIX: Clear generated strategy when user types new text
+  // This forces a re-generation on the next 'Run' click
+  useEffect(() => {
+    if (generatedStrategy) {
+      setGeneratedStrategy(null);
+    }
+  }, [strategyInput]);
+
   useEffect(() => {
     const fetchPlan = async () => {
       try {
@@ -482,10 +475,10 @@ export default function BotBuilderPage() {
         user_id: user.id,
         name: botName || 'Untitled Strategy',
         description: strategyInput,
-        strategy_prompt: JSON.stringify(config), // Save the current config state
+        strategy_prompt: JSON.stringify(config),
         symbol: config.symbol,
         status: 'active',
-        last_backtest_result: result.metrics // Optional: save last result summary
+        last_backtest_result: result.metrics
       };
 
       if (savedBotId) {
@@ -510,40 +503,51 @@ export default function BotBuilderPage() {
     setResult(null);
 
     try {
-      // --- UPDATED BACKEND CONNECTION LOGIC ---
       const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
       console.log("Connecting to Backtest Engine at:", API_URL);
 
-      let backendUrl: string;
-      let requestBody: any;
+      let backendUrl;
+      let requestBody;
       let strategyToUse = generatedStrategy;
 
-      // AI Strategy Generation
-      if (strategyInput.trim().length > 10 && !strategyToUse) {
+      // 1. AI STRATEGY GENERATION
+      // Only run if we have text input and haven't generated yet
+      if (strategyInput.trim().length > 5 && !strategyToUse) {
         try {
-            const aiResponse = await fetch('/api/generate/strategy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                prompt: strategyInput,
-                symbol: config.symbol,
-                timeframe: config.timeframe
-            })
+            // Using correct route: api/generate/strategy
+            const aiResponse = await fetch('/api/parse/strategy', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    prompt: strategyInput,
+                    timeframe: config.timeframe
+                })
             });
 
-            if (aiResponse.ok) {
-                const aiData = await aiResponse.json();
+            const aiData = await aiResponse.json();
+
+            if (!aiResponse.ok) {
+                throw new Error(aiData.error || "AI Strategy Generation Failed");
+            }
+
+            if (aiData.success && aiData.strategy) {
                 strategyToUse = aiData.strategy;
                 setGeneratedStrategy(strategyToUse);
-                toast.success(`AI Generated: ${strategyToUse.name || 'Custom Strategy'}`);
+                toast.success(`AI Generated: ${strategyToUse.name}`);
+            } else {
+                throw new Error("AI response was empty or invalid");
             }
-        } catch (aiErr) {
-            console.warn("AI Generation skipped/failed, falling back to manual config", aiErr);
+        } catch (aiErr: any) {
+            console.error("AI Generation Failed:", aiErr);
+            toast.error("AI Generation Failed", { description: aiErr.message });
+            setLoading(false);
+            return; // Stop execution if AI fails
         }
       }
 
-      // Prepare Payload
+      // 2. PREPARE PYTHON BACKEND PAYLOAD
       if (strategyToUse) {
+        // AI Route
         backendUrl = `${API_URL}/api/backtest/ai`;
         requestBody = {
           symbol: config.symbol,
@@ -552,11 +556,10 @@ export default function BotBuilderPage() {
           end_date: config.end_date,
           timeframe: config.timeframe,
           initial_capital: 100000,
-          commission: 2.50,
-          slippage_pct: 0.05,
-          use_trailing_stop: false
+          risk_per_trade: 0.01
         };
       } else {
+        // Manual Route (Sliders)
         backendUrl = `${API_URL}/api/backtest/professional`;
         requestBody = {
           symbol: config.symbol,
@@ -568,14 +571,14 @@ export default function BotBuilderPage() {
           end_date: config.end_date,
           timeframe: config.timeframe,
           initial_capital: 100000,
-          commission: 2.50,
-          slippage_pct: 0.05,
           stop_loss_pct: 0.02,
-          take_profit_pct: 0.04
+          take_profit_pct: 0.04,
+          commission: 2.50,
+          slippage_pct: 0.05
         };
       }
 
-      // Execute Request
+      // 3. EXECUTE SIMULATION
       const response = await fetch(backendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -594,19 +597,16 @@ export default function BotBuilderPage() {
       }
 
       setResult(data);
-      toast.success(`Simulation Complete: ${data.metrics.totalTrades} trades executed`);
+      toast.success(`Simulation Complete: ${data.metrics.totalTrades} trades`);
 
     } catch (err: any) {
       console.error("Backtest Error:", err);
       if (err.message.includes('fetch') || err.message.includes('connect')) {
-        setError("Connection Failed. The backend engine is unreachable.");
-        toast.error('Connection Error', { 
-          description: `Could not reach ${process.env.NEXT_PUBLIC_API_URL || 'localhost'}. Is the server running?` 
-        });
+        setError("Connection Failed. Is the Python backend running on port 8000?");
       } else {
         setError(err.message || "Simulation failed");
-        toast.error('Backtest Failed', { description: err.message });
       }
+      toast.error('Backtest Failed', { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -735,7 +735,7 @@ export default function BotBuilderPage() {
                              <div className="text-right">
                                 <span className="text-xs text-gray-500 block">Net Profit</span>
                                 <span className={`text-sm font-bold ${result.metrics.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    ${result.metrics.netProfit.toLocaleString()}
+                                    ${Number(result.metrics.netProfit).toLocaleString()}
                                 </span>
                              </div>
                         </div>
@@ -749,7 +749,7 @@ export default function BotBuilderPage() {
                             alt="Backtest Performance Chart" 
                             fill
                             className="object-contain"
-                            unoptimized // Required for base64 images from backend
+                            unoptimized 
                             priority
                           />
                         </div>
@@ -795,7 +795,6 @@ export default function BotBuilderPage() {
                           </thead>
                           <tbody className="divide-y divide-gray-800/50">
                             {result.trades.slice(0, 100).map((trade, idx) => {
-                              // Robust Accessors handles both snake_case (Python) and camelCase (JS)
                               const entryPrice = trade.entry_price ?? trade.entryPrice ?? 0;
                               const exitPrice = trade.exit_price ?? trade.exitPrice ?? 0;
                               const pnl = trade.pnl ?? 0;
@@ -803,7 +802,6 @@ export default function BotBuilderPage() {
                               const reason = trade.exit_reason || trade.result || '-';
                               const isWin = pnl > 0;
                               
-                              // Date formatting
                               const dateRaw = trade.entry_time || trade.date;
                               const dateDisplay = dateRaw ? new Date(dateRaw).toLocaleString() : '-';
 
