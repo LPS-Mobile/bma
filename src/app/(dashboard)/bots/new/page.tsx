@@ -8,14 +8,14 @@ import {
   Sparkles, Settings, TrendingUp, BarChart3, 
   LineChart, Store, Plus, 
   ArrowRight, Play, Save, Lock, AlertCircle, ArrowLeft, 
-  Calendar, Monitor, Globe, Cpu, Crown,
-  Loader2, BadgeCheck, SlidersHorizontal, Eye
+  Monitor, Globe, Cpu, Crown,
+  Loader2, BadgeCheck, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
 // --- IMPORTS ---
-// Ensure these components exist in your project or comment them out if testing
+// Ensure these components exist in your project
 import BacktestMetrics from '@/components/bots/BacktestMetrics';
 
 // --- TYPES ---
@@ -49,17 +49,26 @@ const Button = ({ variant = 'primary', size = 'md', className = '', children, on
     secondary: "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700",
     success: "bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-900/20",
     locked: "bg-gray-900 text-gray-600 border border-gray-800 border-dashed",
-    premium: "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg shadow-purple-900/20 border-0",
   };
   const sizes: any = { sm: "h-9 px-4 text-sm", md: "h-12 px-6 text-base", lg: "h-14 px-8 text-lg" };
-  return <button onClick={onClick} disabled={disabled || isLoading} className={`${base} ${variants[disabled ? 'locked' : variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`} {...props}>{isLoading ? 'Processing...' : children}</button>;
+  
+  return (
+    <button 
+      onClick={onClick} 
+      disabled={disabled || isLoading} 
+      className={`${base} ${variants[disabled ? 'locked' : variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`} 
+      {...props}
+    >
+      {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+      {children}
+    </button>
+  );
 };
 
 const Badge = ({ children, variant = 'default' }: any) => {
   const styles: any = {
     default: "bg-gray-800 text-gray-400",
     blue: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-    gold: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
     green: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
     red: "bg-red-500/10 text-red-400 border border-red-500/20",
   };
@@ -254,14 +263,13 @@ const TemplateMarketplace = ({ onSelectTemplate }: any) => (
   </div>
 );
 
-// --- [FIXED] DEPLOYMENT REQUEST COMPONENT ---
+// --- REQUEST DEPLOYMENT COMPONENT (FIXED) ---
 const RequestDeployment = ({ botId, botName, platform }: any) => {
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
   const supabase = createClient();
 
   const handleRequest = async () => {
-    // Safety check again
     if (!botId) return toast.error("Please save your bot first.");
     setLoading(true);
 
@@ -269,7 +277,7 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Check for existing
+      // Check existing
       const { data: existing } = await supabase
         .from('deployments')
         .select('*')
@@ -324,7 +332,7 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
   );
 };
 
-// --- [FIXED] DEPLOYMENT SCREEN ---
+// --- DEPLOYMENT SCREEN (FIXED) ---
 const DeploymentScreen = ({ botId, botName, plan, onSave, isSaving }: any) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const router = useRouter();
@@ -561,33 +569,48 @@ export default function BotBuilderPage() {
   };
 
   const handleSaveBot = async () => {
+    // 1. Validation
     if (!result) return toast.error("Please run a backtest first to validate the strategy.");
+    if (!botName) return toast.error("Please name your strategy before saving.");
+    
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
 
+      // 2. Prepare Data
+      // FIX: Removed JSON.stringify on 'config' to prevent 400 Bad Request if DB is jsonb
       const botData = {
         user_id: user.id,
-        name: botName || 'Untitled Strategy',
-        description: strategyInput,
-        strategy_prompt: JSON.stringify(config),
+        name: botName,
+        description: strategyInput || 'No description',
+        strategy_prompt: config, 
         symbol: config.symbol,
         status: 'active',
         last_backtest_result: result.metrics
       };
 
       if (savedBotId) {
-        const { error } = await supabase.from('bots').update(botData).eq('id', savedBotId);
+        // Update existing
+        const { error } = await supabase
+          .from('bots')
+          .update(botData)
+          .eq('id', savedBotId);
         if (error) throw error;
       } else {
-        const { data: newBot, error } = await supabase.from('bots').insert(botData).select().single();
+        // Insert new
+        const { data: newBot, error } = await supabase
+          .from('bots')
+          .insert(botData)
+          .select()
+          .single();
         if (error) throw error;
         if (newBot) setSavedBotId(newBot.id);
       }
       toast.success('Strategy Saved Successfully');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save strategy');
+      console.error(err);
+      toast.error('Failed to save strategy', { description: err.message || err.details });
     } finally {
       setSaving(false);
     }
@@ -606,7 +629,6 @@ export default function BotBuilderPage() {
       let strategyToUse = generatedStrategy;
 
       // 1. AI STRATEGY GENERATION
-      // Only run if we have text input and haven't generated yet
       if (strategyInput.trim().length > 5 && !strategyToUse) {
         try {
             const aiResponse = await fetch('/api/parse/strategy', { 
@@ -754,8 +776,16 @@ export default function BotBuilderPage() {
         </div>
         
         <div className="w-1/3 flex justify-end">
-          <Button onClick={handleSaveBot} isLoading={saving} disabled={!result} size="sm" className="bg-white text-black hover:bg-gray-200 shadow-none">
-            <Save className="w-4 h-4 mr-2" /> {savedBotId ? 'Update Strategy' : 'Save Strategy'}
+          <Button 
+            onClick={handleSaveBot} 
+            isLoading={saving} 
+            disabled={!result} 
+            variant="primary" // FIX: Standard blue style
+            size="sm" 
+            className="shadow-lg shadow-blue-900/20"
+          >
+            <Save className="w-4 h-4 mr-2" /> 
+            {savedBotId ? 'Update Strategy' : 'Save Strategy'}
           </Button>
         </div>
       </header>
