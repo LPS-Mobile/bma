@@ -268,12 +268,14 @@ const TemplateMarketplace = ({ onSelectTemplate }: any) => (
 const RequestDeployment = ({ botId, botName, platform }: any) => {
   const [loading, setLoading] = useState(false);
   const [requested, setRequested] = useState(false);
+  // State for the custom Project Name input
+  const [customName, setCustomName] = useState(botName || '');
   const supabase = createClient();
 
+  // Check if already requested on load
   useEffect(() => {
     const checkStatus = async () => {
       if (!botId) return;
-      // Use maybeSingle() to avoid errors if no request exists yet
       const { data } = await supabase
         .from('deployments')
         .select('*')
@@ -281,41 +283,42 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
         .eq('platform', platform)
         .maybeSingle();
       
-      if (data) setRequested(true);
+      if (data) {
+        setRequested(true);
+        // If it exists, show the name used
+        if (data.project_name) setCustomName(data.project_name);
+      }
     };
     checkStatus();
   }, [botId, platform, supabase]);
 
   const handleRequest = async () => {
     if (!botId) return toast.error("Please save your bot first.");
+    if (!customName.trim()) return toast.error("Please enter a project name.");
+    
     setLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      console.log("Submitting Request for:", platform);
+      console.log(`Submitting ${platform} request for project: ${customName}`);
 
-      // FIX: Minimal payload. 
-      // Removed 'requested_at' and 'bot_name' as they don't exist in your DB.
-      // Supabase will auto-fill 'created_at' if you have it set as default.
       const { error } = await supabase.from('deployments').insert({
         user_id: user.id,
         bot_id: botId,
         platform: platform,
-        status: 'pending'
+        status: 'pending',
+        project_name: customName // <--- Sends the custom name from input
       });
 
-      if (error) {
-        console.error("Supabase Error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success(`${platform} request submitted!`);
       setRequested(true);
     } catch (e: any) {
-      console.error("Request Logic Error:", e);
-      toast.error("Request Failed", { description: e.message || e.details });
+      console.error("Deployment Error:", e);
+      toast.error("Request Failed", { description: e.message });
     } finally {
       setLoading(false);
     }
@@ -323,20 +326,38 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
 
   if (requested) {
     return (
-      <button disabled className="w-full h-10 bg-green-900/20 border border-green-500/30 text-green-500 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed">
-        <BadgeCheck className="w-4 h-4" /> Request Sent
-      </button>
+      <div className="w-full space-y-2">
+         <div className="text-xs text-gray-500 text-center uppercase font-bold">Project Name</div>
+         <div className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-400 text-center">
+            {customName}
+         </div>
+         <button disabled className="w-full h-10 bg-green-900/20 border border-green-500/30 text-green-500 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed">
+            <BadgeCheck className="w-4 h-4" /> Request Sent
+         </button>
+      </div>
     );
   }
 
   return (
-    <Button 
-      onClick={handleRequest} 
-      isLoading={loading} 
-      className="w-full h-10 text-sm bg-blue-600 hover:bg-blue-500"
-    >
-      Request {platform} Setup
-    </Button>
+    <div className="w-full space-y-3">
+       <div>
+          <label className="text-[10px] uppercase text-gray-500 font-bold mb-1 block text-left">Project / Bot Name</label>
+          <input 
+            type="text" 
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500 outline-none transition-colors"
+            placeholder="Name your deployment..."
+          />
+       </div>
+       <Button 
+          onClick={handleRequest} 
+          isLoading={loading} 
+          className="w-full h-10 text-sm bg-blue-600 hover:bg-blue-500"
+       >
+          Request {platform} Setup
+       </Button>
+    </div>
   );
 };
 

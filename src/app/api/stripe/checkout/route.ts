@@ -1,71 +1,68 @@
-// src/app/api/stripe/checkout/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import Stripe from 'stripe';
 
-// FIX: Cast apiVersion to 'any' to bypass strict type check for beta SDKs
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
-
 export async function POST(req: Request) {
   try {
-    // 1. Init Supabase (Async)
+    // --- DEBUGGING CHECKS ---
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("❌ CRITICAL: STRIPE_SECRET_KEY is missing in .env");
+      return NextResponse.json({ error: "Server Misconfiguration: Missing Stripe Key" }, { status: 500 });
+    }
+
+    // Initialize Stripe
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20' as any,
+    });
+
+    // 1. Init Supabase
     const supabase = await createClient(); 
-    
-    // 2. Check for User (But don't block if missing)
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 3. Parse Body
+    // 2. Parse Body
     const body = await req.json();
     const { botId, planType, priceId: directPriceId, planName, mode = 'payment' } = body; 
 
-    // 4. Resolve Price ID
+    console.log(`[API] Processing checkout for: ${planType || 'Direct Price'}`);
+
+    // 3. Resolve Price ID
     let finalPriceId = directPriceId;
 
-    // Fallback for Expert Reviews or other mapped plans
     if (!finalPriceId && planType) {
-      const expertPriceId = process.env.STRIPE_PRICE_ID_EXPERT_REVIEW;
-      const PRICES: Record<string, string | undefined> = {
-        expert_review: expertPriceId,
-      };
-      finalPriceId = PRICES[planType];
+      // Map plans here
+      if (planType === 'expert_review') {
+        finalPriceId = process.env.STRIPE_PRICE_ID_EXPERT_REVIEW;
+      }
+      // Add other plans here if needed
     }
 
     if (!finalPriceId) {
+      console.error(`❌ Error: No Price ID found for '${planType}'. Check STRIPE_PRICE_ID_EXPERT_REVIEW in .env`);
       return NextResponse.json({ 
-        error: `Price ID missing for '${planName || planType}'` 
+        error: `Configuration Error: Price ID missing for '${planName || planType}'` 
       }, { status: 400 });
     }
 
-    // 5. Create Session
-    const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // 4. Create Session
+    const origin = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
     
-    // Logic: If user is logged in, use their email. If not, Stripe will ask for it.
-    const customerEmail = user?.email || undefined;
-
     const session = await stripe.checkout.sessions.create({
-      customer_email: customerEmail, 
+      customer_email: user?.email, 
       line_items: [{ price: finalPriceId, quantity: 1 }],
       mode: mode, 
-      
-      // ✅ CRITICAL CHANGE: Redirect to the special "Claim Account" page
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      
-      cancel_url: `${origin}/pricing?checkout=cancelled`,
-      
+      success_url: `${origin}/dashboard/builder?success=true&bot_id=${botId}`,
+      cancel_url: `${origin}/dashboard/builder?canceled=true`,
       metadata: {
-        // ✅ CRITICAL CHANGE: Mark as 'guest' if not logged in
         userId: user?.id || 'guest', 
         botId: botId || 'N/A',
-        planName: planName || 'N/A',
+        planType: planType || 'N/A',
       },
     });
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
 
   } catch (error: any) {
-    console.error('🔥 [API] Stripe Error:', error);
+    console.error('🔥 [API] Stripe Fatal Error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal Server Error' }, 
       { status: 500 }
