@@ -270,16 +270,16 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
   const [requested, setRequested] = useState(false);
   const supabase = createClient();
 
-  // Check status on load
   useEffect(() => {
     const checkStatus = async () => {
       if (!botId) return;
+      // Use maybeSingle() to avoid errors if no request exists yet
       const { data } = await supabase
         .from('deployments')
         .select('*')
         .eq('bot_id', botId)
         .eq('platform', platform)
-        .maybeSingle(); // FIX: Use maybeSingle() to avoid 406 errors if empty
+        .maybeSingle();
       
       if (data) setRequested(true);
     };
@@ -294,22 +294,27 @@ const RequestDeployment = ({ botId, botName, platform }: any) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // 1. Insert Request
-      // FIX: Removed 'bot_name' because the column does not exist in your DB schema.
+      console.log("Submitting Request for:", platform);
+
+      // FIX: Minimal payload. 
+      // Removed 'requested_at' and 'bot_name' as they don't exist in your DB.
+      // Supabase will auto-fill 'created_at' if you have it set as default.
       const { error } = await supabase.from('deployments').insert({
         user_id: user.id,
         bot_id: botId,
         platform: platform,
-        status: 'pending',
-        requested_at: new Date().toISOString()
+        status: 'pending'
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+      }
 
       toast.success(`${platform} request submitted!`);
       setRequested(true);
     } catch (e: any) {
-      console.error(e);
+      console.error("Request Logic Error:", e);
       toast.error("Request Failed", { description: e.message || e.details });
     } finally {
       setLoading(false);
