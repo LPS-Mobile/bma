@@ -72,7 +72,7 @@ export function PricingTable() {
       badge: 'Most Popular',
       cta: 'Start Trading Live',
       ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
-      stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE || 'price_1SJd29DATCpMStKa9wc05i4L',
+      stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE || 'price_1SdxflDATCpMStKaCTodM0EH',
       features: [
         { text: 'Everything in Builder', included: true },
         { text: 'Unlimited bots', included: true },
