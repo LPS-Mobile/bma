@@ -4,8 +4,10 @@ import Stripe from 'stripe';
 
 export async function POST(req: Request) {
   try {
+    // 1. Validate Server Configuration
     if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: "Server Misconfiguration: Missing Stripe Key" }, { status: 500 });
+      console.error("❌ STRIPE_SECRET_KEY missing");
+      return NextResponse.json({ error: "Server Misconfiguration" }, { status: 500 });
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -15,45 +17,42 @@ export async function POST(req: Request) {
     const supabase = await createClient(); 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // 1. Parse Body
+    // 2. Parse Request
     const body = await req.json();
-    const { botId, planType, mode } = body; // We ignore 'priceId' from client
+    const { planType, mode } = body; 
 
-    console.log(`[API] Plan Request: ${planType}`);
+    console.log(`[API] Checkout Request for Plan: ${planType}`);
 
-    // 2. SERVER-SIDE LOOKUP (Secure & Reliable)
-    // The server has access to private .env variables. The client does not.
+    // 3. SERVER-SIDE ID LOOKUP
+    // The server reads the .env variables (securely)
     let finalPriceId = '';
 
     if (planType === 'builder') {
-      finalPriceId = process.env.STRIPE_PRICE_BUILDER || '';
+      finalPriceId = process.env.STRIPE_PRICE_BUILDER || process.env.NEXT_PUBLIC_STRIPE_PRICE_BUILDER || '';
     } else if (planType === 'live_trader') {
-      finalPriceId = process.env.STRIPE_PRICE_LIVE_TRADER || ''; // Check if your env var is named LIVE or LIVE_TRADER
+      finalPriceId = process.env.STRIPE_PRICE_LIVE_TRADER || process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE || '';
     } else if (planType === 'expert_review') {
       finalPriceId = process.env.STRIPE_PRICE_ID_EXPERT_REVIEW || '';
     }
 
-    // 3. Validation
+    // 4. Validate Price ID Found
     if (!finalPriceId) {
-      console.error(`❌ [API] Error: Price ID not found for plan '${planType}'`);
+      console.error(`❌ Price ID not found for plan: ${planType}`);
       return NextResponse.json({ 
-        error: `Configuration Error: No Price ID configured for ${planType}` 
-      }, { status: 400 });
+        error: `Configuration Error: Price ID missing for '${planType}'. Check server env vars.` 
+      }, { status: 500 });
     }
 
-    // 4. Force Subscription Mode for Plans
-    // If it's a known plan, force subscription mode
-    const finalMode = (planType === 'builder' || planType === 'live_trader') 
-      ? 'subscription' 
-      : (mode || 'payment');
+    // 5. Force Mode based on Plan
+    const finalMode = (planType === 'builder' || planType === 'live_trader') ? 'subscription' : (mode || 'payment');
 
-    // 5. Create Session
-    const origin = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    // 6. Create Session
+    const origin = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://your-app.vercel.app';
     
     const session = await stripe.checkout.sessions.create({
       customer_email: user?.email, 
       line_items: [{ price: finalPriceId, quantity: 1 }],
-      mode: finalMode, 
+      mode: finalMode,
       success_url: `${origin}/dashboard/builder?success=true`,
       cancel_url: `${origin}/dashboard/builder?canceled=true`,
       metadata: {
@@ -65,7 +64,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ sessionId: session.id, url: session.url });
 
   } catch (error: any) {
-    console.error('🔥 [API] Stripe Error:', error.message);
+    console.error('🔥 Stripe API Error:', error.message);
     return NextResponse.json(
       { error: error.message || 'Internal Server Error' }, 
       { status: 500 }

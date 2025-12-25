@@ -135,8 +135,7 @@ export default function SettingsPage() {
           .eq('id', user.id)
           .single();
 
-        // ✅ CRITICAL FIX for 406 Error:
-        // Changed from .single() to .maybeSingle() so it doesn't crash if no subscription exists
+        // ✅ FIX 1: Use .maybeSingle() to prevent 406 Error if no subscription exists
         const { data: subs } = await supabase
           .from('subscriptions')
           .select('*')
@@ -199,27 +198,20 @@ export default function SettingsPage() {
   };
 
   // 3. Handle Upgrade
-  const handleUpgrade = async (priceId: string, planName: string) => {
-    // ✅ CRITICAL CHECK: Debug Vercel Env Vars
-    if (!priceId) {
-      console.error(`Missing Price ID for ${planName}`);
-      alert(`Configuration Error: Price ID for ${planName} is undefined. Please check your Vercel Environment Variables.`);
-      return;
-    }
-
-    setIsUpgrading(planName);
+  const handleUpgrade = async (planKey: string) => {
+    // ✅ FIX 2: We no longer send Env Vars from the client.
+    // We send a simple key like 'builder' or 'live_trader'.
+    // The server will look up the Price ID using its secure environment variables.
+    
+    setIsUpgrading(planKey);
     
     try {
-      // ✅ FIX 500 ERROR: Pass 'mode: subscription' explicitly
-      // This overrides the 'payment' default in your backend API
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          priceId: priceId, 
-          planName: planName,
-          planType: 'subscription_upgrade', 
-          mode: 'subscription' // REQUIRED for recurring prices
+          planType: planKey,  // Send 'builder' or 'live_trader'
+          mode: 'subscription' 
         }),
       });
       
@@ -282,7 +274,7 @@ export default function SettingsPage() {
             <div>
               <h1 className="text-2xl font-bold mb-1 flex items-center gap-3">
                 Account Settings
-                <span className="text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-0.5 rounded-full">v2.1 (Live)</span>
+                <span className="text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-0.5 rounded-full">v3.0 (Live)</span>
               </h1>
               <p className="text-gray-400 text-sm">Manage your profile, trading preferences, and subscription.</p>
             </div>
@@ -455,10 +447,10 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-lg">$49<span className="text-sm text-gray-500">/mo</span></span>
                       
-                      {/* ✅ FIX: Using correct environment variable */}
+                      {/* ✅ FIX 3: Pass simple string 'builder' instead of missing env var */}
                       <Button 
                         size="sm" 
-                        onClick={() => handleUpgrade(process.env.STRIPE_PRICE_BUILDER || '', 'builder')}
+                        onClick={() => handleUpgrade('builder')}
                         isLoading={isUpgrading === 'builder'}
                         disabled={isUpgrading !== null || subscription.plan === 'builder'}
                       >
@@ -478,11 +470,11 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-lg">$149<span className="text-sm text-gray-500">/mo</span></span>
                       
-                      {/* ✅ FIX: Using correct environment variable */}
+                      {/* ✅ FIX 3: Pass simple string 'live_trader' */}
                       <Button 
                         size="sm" 
                         variant="primary"
-                        onClick={() => handleUpgrade(process.env.STRIPE_PRICE_LIVE_TRADER || '', 'live_trader')}
+                        onClick={() => handleUpgrade('live_trader')}
                         isLoading={isUpgrading === 'live_trader'}
                         disabled={isUpgrading !== null || subscription.plan === 'live_trader'}
                       >
