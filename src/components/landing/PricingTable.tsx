@@ -9,13 +9,14 @@ export function PricingTable() {
   const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  const getButtonStyle = (tier: string) => {
-    switch (tier) {
-      case 'Builder':
+  // Helper for button styles based on Plan ID (Stable)
+  const getButtonStyle = (id: string) => {
+    switch (id) {
+      case 'builder':
         return "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25 ring-1 ring-blue-500/50"
-      case 'Live Trader':
+      case 'live_trader':
         return "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-indigo-500/25 ring-1 ring-indigo-500/50"
-      case 'Automation Pro':
+      case 'automation_pro':
         return "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg shadow-orange-500/25 ring-1 ring-orange-500/50 transform transition-all hover:scale-105"
       default:
         return ""
@@ -31,8 +32,8 @@ export function PricingTable() {
       description: 'Perfect for testing the waters',
       highlight: false,
       cta: 'Start Free Trial',
-      ctaVariant: 'outline' as const, // ✅ Valid
-      stripeId: null,
+      ctaVariant: 'outline' as const,
+      // No stripeId needed here
       features: [
         { text: '1 bot project', included: true },
         { text: '2 indicators max', included: true },
@@ -44,14 +45,13 @@ export function PricingTable() {
     },
     {
       name: 'Builder',
-      id: 'builder',
+      id: 'builder', // This string is sent to the API
       price: 49,
       period: 'month',
       description: 'For serious strategy developers',
       highlight: false,
       cta: 'Get Started',
-      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
-      stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUILDER || 'price_1SJd1hDATCpMStKajg0ByEXv',
+      ctaVariant: 'default' as const,
       features: [
         { text: 'Unlimited bots', included: true },
         { text: 'Unlimited indicators', included: true },
@@ -64,15 +64,14 @@ export function PricingTable() {
     },
     {
       name: 'Live Trader',
-      id: 'live_trader',
+      id: 'live_trader', // This string is sent to the API
       price: 149,
       period: 'month',
       description: 'Deploy and monitor live bots',
       highlight: false,
       badge: 'Most Popular',
       cta: 'Start Trading Live',
-      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
-      stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIVE || 'price_1SdxflDATCpMStKaCTodM0EH',
+      ctaVariant: 'default' as const,
       features: [
         { text: 'Everything in Builder', included: true },
         { text: 'Unlimited bots', included: true },
@@ -86,16 +85,15 @@ export function PricingTable() {
     },
     {
       name: 'Automation Pro',
-      id: 'automation_pro',
+      id: 'automation_pro', // This string is sent to the API
       price: 249,
       period: 'month',
       description: 'Full automation for Prop Firms',
       highlight: true,
       badge: 'Prop Firm Ready',
       cta: 'Go Pro',
-      ctaVariant: 'default' as const, // ✅ FIXED: Changed 'primary' to 'default'
+      ctaVariant: 'default' as const,
       comingSoon: false,
-      stripeId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_1SJd96DATCpMStKavJ4b8avr',
       features: [
         { text: 'Everything in Live Trader', included: true },
         { text: 'Unlimited bots', included: true },
@@ -112,32 +110,30 @@ export function PricingTable() {
   const handleCheckout = async (plan: typeof plans[0]) => {
     setLoadingId(plan.id)
 
+    // 1. Handle Free Trial Redirect immediately
     if (plan.price === 0) {
       router.push('/signup?plan=free_trial')
       return
     }
 
-    if (!plan.stripeId) {
-      console.error(`Missing Stripe Price ID for plan: ${plan.name}`)
-      alert(`Configuration Error: Price ID missing for ${plan.name}.`)
-      setLoadingId(null)
-      return
-    }
-
     try {
+      // 2. Call API with the Plan ID string (e.g., 'builder')
+      // The API will look up the Price ID using secure server-side env vars
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          priceId: plan.stripeId,
-          mode: 'subscription', 
-          planName: plan.name 
+          planType: plan.id, // e.g. 'builder' or 'live_trader'
+          planName: plan.name,
+          mode: 'subscription' 
         }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) throw new Error(data.error || 'Checkout failed')
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Checkout failed')
+      }
 
       if (data.url) {
         window.location.href = data.url
@@ -167,9 +163,9 @@ export function PricingTable() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          {plans.map((plan, index) => (
+          {plans.map((plan) => (
             <div
-              key={index}
+              key={plan.id}
               className={`relative rounded-2xl p-8 transition-all duration-300 flex flex-col ${
                 plan.highlight
                   ? 'bg-gradient-to-b from-blue-900/20 to-gray-900 border-2 border-blue-500 shadow-2xl shadow-blue-500/20 scale-105 z-10'
@@ -215,7 +211,7 @@ export function PricingTable() {
               <Button
                 variant={plan.ctaVariant}
                 size="lg"
-                className={`w-full font-semibold tracking-wide ${getButtonStyle(plan.name)}`}
+                className={`w-full font-semibold tracking-wide ${getButtonStyle(plan.id)}`}
                 disabled={loadingId !== null && loadingId !== plan.id}
                 onClick={() => handleCheckout(plan)}
               >
