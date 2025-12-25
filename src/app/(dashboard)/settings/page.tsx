@@ -10,7 +10,7 @@ import {
 import Link from 'next/link';
 
 // ==========================================
-// 1. UI COMPONENTS
+// 1. UI HELPER COMPONENTS
 // ==========================================
 
 const Button = ({ variant = 'primary', size = 'md', className = '', children, onClick, disabled, isLoading, ...props }: any) => {
@@ -77,15 +77,18 @@ const Badge = ({ children, variant = 'default' }: any) => {
 };
 
 // ==========================================
-// 3. MAIN SETTINGS PAGE
+// 2. TYPES
 // ==========================================
 
-// FIX 1: Define interface to allow 'renews' to be string OR null
 interface SubscriptionState {
   plan: string;
   status: string;
   renews: string | null;
 }
+
+// ==========================================
+// 3. MAIN SETTINGS PAGE
+// ==========================================
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -108,7 +111,6 @@ export default function SettingsPage() {
   });
 
   // Subscription State
-  // FIX 2: Apply the interface here so TS knows 'renews' can change from null to string later
   const [subscription, setSubscription] = useState<SubscriptionState>({
     plan: 'free',
     status: 'inactive',
@@ -126,20 +128,21 @@ export default function SettingsPage() {
         }
         setUser(user);
 
-        // Fetch public profile (metadata)
+        // Fetch public profile
         const { data: publicProfile } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        // Fetch subscription
+        // ✅ CRITICAL FIX for 406 Error:
+        // Changed from .single() to .maybeSingle() so it doesn't crash if no subscription exists
         const { data: subs } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', user.id)
           .eq('status', 'active')
-          .single();
+          .maybeSingle(); 
 
         // Update State
         setProfile({
@@ -179,10 +182,10 @@ export default function SettingsPage() {
             .from('users')
             .update({
                 full_name: profile.full_name,
-                // Add other fields here if they exist in your DB schema
-                // experience: profile.experience,
-                // risk: profile.risk,
-                // exchange: profile.exchange
+                experience: profile.experience,
+                risk: profile.risk,
+                exchange: profile.exchange,
+                preferred_asset: profile.preferred_asset
             })
             .eq('id', user.id);
 
@@ -197,30 +200,56 @@ export default function SettingsPage() {
 
   // 3. Handle Upgrade
   const handleUpgrade = async (priceId: string, planName: string) => {
-    if (!priceId) return;
+    // ✅ CRITICAL CHECK: Debug Vercel Env Vars
+    if (!priceId) {
+      console.error(`Missing Price ID for ${planName}`);
+      alert(`Configuration Error: Price ID for ${planName} is undefined. Please check your Vercel Environment Variables.`);
+      return;
+    }
+
     setIsUpgrading(planName);
+    
     try {
+      // ✅ FIX 500 ERROR: Pass 'mode: subscription' explicitly
+      // This overrides the 'payment' default in your backend API
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId, planName }),
+        body: JSON.stringify({ 
+          priceId: priceId, 
+          planName: planName,
+          planType: 'subscription_upgrade', 
+          mode: 'subscription' // REQUIRED for recurring prices
+        }),
       });
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Checkout failed');
-      if (data.url) window.location.href = data.url;
-    } catch (error) {
-      toast.error('Upgrade failed. Try again.');
+      
+      if (!response.ok) {
+        console.error("Server Checkout Error:", data);
+        throw new Error(data.details || data.error || 'Checkout failed');
+      }
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+
+    } catch (error: any) {
+      console.error("Upgrade Flow Error:", error);
+      toast.error(error.message || 'Upgrade failed. Please try again.');
       setIsUpgrading(null);
     }
   };
 
-  // 4. Handle Sign Out (Fixed)
+  // 4. Handle Sign Out
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
       await supabase.auth.signOut();
       toast.success('Signed out successfully');
-      router.push('/'); // Force redirect to home/login
+      router.push('/');
     } catch (error) {
       console.error('Sign out error', error);
       toast.error('Error signing out');
@@ -251,7 +280,10 @@ export default function SettingsPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold mb-1">Account Settings</h1>
+              <h1 className="text-2xl font-bold mb-1 flex items-center gap-3">
+                Account Settings
+                <span className="text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-0.5 rounded-full">v2.1 (Live)</span>
+              </h1>
               <p className="text-gray-400 text-sm">Manage your profile, trading preferences, and subscription.</p>
             </div>
           </div>
@@ -422,9 +454,11 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-lg">$49<span className="text-sm text-gray-500">/mo</span></span>
+                      
+                      {/* ✅ FIX: Using correct environment variable */}
                       <Button 
                         size="sm" 
-                        onClick={() => handleUpgrade('price_1SJd1hDATCpMStKajg0ByEXv', 'builder')}
+                        onClick={() => handleUpgrade(process.env.STRIPE_PRICE_BUILDER || '', 'builder')}
                         isLoading={isUpgrading === 'builder'}
                         disabled={isUpgrading !== null || subscription.plan === 'builder'}
                       >
@@ -443,10 +477,12 @@ export default function SettingsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="font-mono text-lg">$149<span className="text-sm text-gray-500">/mo</span></span>
+                      
+                      {/* ✅ FIX: Using correct environment variable */}
                       <Button 
                         size="sm" 
                         variant="primary"
-                        onClick={() => handleUpgrade('price_1SJd29DATCpMStKa9wc05i4L', 'live_trader')}
+                        onClick={() => handleUpgrade(process.env.STRIPE_PRICE_LIVE_TRADER || '', 'live_trader')}
                         isLoading={isUpgrading === 'live_trader'}
                         disabled={isUpgrading !== null || subscription.plan === 'live_trader'}
                       >
